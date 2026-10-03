@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { PhotoSlots } from './RestaurantList';
 import ReviewSheet from './ReviewSheet';
+import { readReviews, saveReview, useLocalActivity } from './data/localActivity';
 import { restaurantDetails, distanceOrigin, distanceInMeters, formatDistance, formatPrice } from './data/restaurantDetails';
 
 const tabs = ['메뉴', '리뷰', '정보'];
@@ -8,12 +9,9 @@ const tabs = ['메뉴', '리뷰', '정보'];
 export default function RestaurantDetail({ place, onBack, favorite, onToggleFavorite, onCreatePod }) {
   const [activeTab, setActiveTab] = useState('메뉴');
   const [writing, setWriting] = useState(false);
-  const [myReviews, setMyReviews] = useState(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem(`lunchpwc:reviews:${place.id}`) || '[]');
-      return Array.isArray(saved) ? saved.filter(review => review && typeof review.author === 'string' && typeof review.review === 'string' && typeof review.menu === 'string' && Number.isInteger(review.rating) && review.rating >= 1 && review.rating <= 5 && Array.isArray(review.tags) && review.tags.every(tag => typeof tag === 'string')) : [];
-    } catch { return []; }
-  });
+  useLocalActivity();
+  const myReviews = readReviews(place.id);
+  const [favoriteError, setFavoriteError] = useState('');
   const reviews = [...myReviews, place];
   const backButton = useRef(null);
   const details = restaurantDetails[place.id] ?? {};
@@ -43,10 +41,14 @@ export default function RestaurantDetail({ place, onBack, favorite, onToggleFavo
           <span className="detail-rating"><span aria-hidden="true">★</span> {place.rating.toFixed(1)}</span>
           <span>리뷰 {reviews.length}</span>
           <span className="detail-distance" title={`${distanceOrigin.label} 기준 직선거리`}>{distance}</span>
-          <button type="button" className={`detail-heart${favorite ? ' is-saved' : ''}`} aria-label="찜하기" aria-pressed={favorite} onClick={onToggleFavorite}>
+          <button type="button" className={`detail-heart${favorite ? ' is-saved' : ''}`} aria-label="찜하기" aria-pressed={favorite} onClick={() => {
+            try { onToggleFavorite(); setFavoriteError(''); }
+            catch { setFavoriteError('찜을 저장하지 못했어요. 다시 시도해주세요.'); }
+          }}>
             <svg viewBox="0 0 24 24" fill={favorite ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><path d="M20.5 4.8a5 5 0 0 0-7.1 0L12 6.2l-1.4-1.4a5 5 0 0 0-7.1 7.1L12 20l8.5-8.1a5 5 0 0 0 0-7.1Z" strokeLinejoin="round" /></svg>
           </button>
         </div>
+        {favoriteError && <p className="pod-error" role="alert">{favoriteError}</p>}
         <PhotoSlots name={place.name} />
         <div className="detail-actions">
           <button type="button" className="detail-create-pod" onClick={() => onCreatePod(place)}>
@@ -90,9 +92,7 @@ export default function RestaurantDetail({ place, onBack, favorite, onToggleFavo
       </div>
     </div>
     {writing && <ReviewSheet name={place.name} onClose={() => setWriting(false)} onSubmit={review => {
-      const next = [{ ...review, id: crypto.randomUUID(), author: '나' }, ...myReviews];
-      localStorage.setItem(`lunchpwc:reviews:${place.id}`, JSON.stringify(next));
-      setMyReviews(next);
+      saveReview(place.id, review);
       setActiveTab('리뷰');
       setWriting(false);
     }} />}

@@ -5,7 +5,10 @@ import RestaurantSheet, { INITIAL_SHEET_HEIGHT } from './RestaurantSheet';
 import RestaurantDetail from './RestaurantDetail';
 import CreatePod from './CreatePod';
 import PodsPage from './PodsPage';
+import MyPage from './MyPage';
+import ExploreSearch from './ExploreSearch';
 import { restaurants } from './data/restaurants';
+import { readFavorites, toggleFavorite, useLocalActivity } from './data/localActivity';
 import './styles.css';
 
 const tabs = [
@@ -48,27 +51,11 @@ function ProfileIcon({ selected }) {
   );
 }
 
-function ExploreSearch() {
-  return (
-    <div className="explore-search">
-      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <circle cx="10.75" cy="10.75" r="6.75" />
-        <path d="m16 16 4.5 4.5" />
-      </svg>
-      <input
-        type="search"
-        aria-label="맛집 또는 메뉴 검색 (준비 중)"
-        placeholder="맛집이나 메뉴를 찾아보세요"
-        readOnly
-      />
-    </div>
-  );
-}
-
-function ExploreView({ onCreatePod }) {
+function ExploreView({ onCreatePod, initialPlace = null }) {
   const [sheetHeight, setSheetHeight] = useState(INITIAL_SHEET_HEIGHT);
-  const [selectedPlace, setSelectedPlace] = useState(null);
-  const [favorites, setFavorites] = useState(() => new Set());
+  const [selectedPlace, setSelectedPlace] = useState(initialPlace);
+  useLocalActivity();
+  const favorites = readFavorites();
   const previousFocus = useRef(null);
   const selectPlace = useCallback(place => {
     previousFocus.current = document.activeElement;
@@ -82,16 +69,12 @@ function ExploreView({ onCreatePod }) {
     <div className={`explore-view${selectedPlace ? ' has-detail' : ''}`} style={{ '--sheet-height': `${sheetHeight}px` }}>
       <NaverMap places={restaurants} onSelect={selectPlace} />
       <div className="explore-list-view" inert={Boolean(selectedPlace)}>
-        <ExploreSearch />
+        <ExploreSearch places={restaurants} onSelect={selectPlace} suspended={Boolean(selectedPlace)} />
         <RestaurantSheet onHeightChange={setSheetHeight} places={restaurants} onSelect={selectPlace} />
       </div>
       {selectedPlace && <RestaurantDetail key={selectedPlace.id} place={selectedPlace} onBack={closeDetail}
         onCreatePod={onCreatePod}
-        favorite={favorites.has(selectedPlace.id)} onToggleFavorite={() => setFavorites(previous => {
-          const next = new Set(previous);
-          if (next.has(selectedPlace.id)) next.delete(selectedPlace.id); else next.add(selectedPlace.id);
-          return next;
-        })} />}
+        favorite={favorites.has(selectedPlace.id)} onToggleFavorite={() => toggleFavorite(selectedPlace.id)} />}
     </div>
   );
 }
@@ -100,6 +83,7 @@ function App() {
   const [activeTab, setActiveTab] = useState('explore');
   const [podEntry, setPodEntry] = useState(null);
   const [podsVersion, setPodsVersion] = useState(0);
+  const [detailEntry, setDetailEntry] = useState(null);
   const podTrigger = useRef(null);
   function openCreatePod(place = null) {
     podTrigger.current = document.activeElement;
@@ -118,10 +102,11 @@ function App() {
 
   return (
     <div className="app-shell">
-      <main inert={Boolean(podEntry)} className={`placeholder${activeTab === 'explore' ? ' explore-screen' : activeTab === 'mates' ? ' mates-screen' : ''}`} id="main-content" aria-labelledby="page-title">
-        <h1 id="page-title" className={activeTab !== 'more' ? 'visually-hidden' : undefined} aria-live="polite">{currentTab.label}</h1>
-        {activeTab === 'explore' && <ExploreView onCreatePod={openCreatePod} />}
+      <main inert={Boolean(podEntry)} className={`placeholder${activeTab === 'explore' ? ' explore-screen' : activeTab === 'mates' ? ' mates-screen' : ' my-screen'}`} id="main-content" aria-labelledby="page-title">
+        <h1 id="page-title" className="visually-hidden" aria-live="polite">{currentTab.label}</h1>
+        {activeTab === 'explore' && <ExploreView onCreatePod={openCreatePod} initialPlace={detailEntry} />}
         {activeTab === 'mates' && <PodsPage key={podsVersion} onCreatePod={() => openCreatePod()} />}
+        {activeTab === 'more' && <MyPage onSelectRestaurant={place => { setDetailEntry(place); setActiveTab('explore'); }} />}
       </main>
       {podEntry && <CreatePod initialPlace={podEntry.place} places={restaurants} onClose={closeCreatePod} onCreated={() => setPodsVersion(value => value + 1)} onComplete={completeCreatePod} />}
       <nav className="navigation" aria-label="주 메뉴">
@@ -133,7 +118,7 @@ function App() {
               className={`nav-item${selected ? ' is-selected' : ''}`}
               type="button"
               aria-current={selected ? 'page' : undefined}
-              onClick={() => { setPodEntry(null); setActiveTab(id); }}
+              onClick={() => { setPodEntry(null); setDetailEntry(null); setActiveTab(id); }}
             >
               <Icon selected={selected} />
               <span>{label}</span>

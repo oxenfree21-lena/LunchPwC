@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { formatPodConditions } from './lib/podFilters';
 
 export default function PodConfirmation({ pod, onClose }) {
   const dialog = useRef(null);
@@ -33,6 +34,7 @@ export default function PodConfirmation({ pod, onClose }) {
         <div><dt>일시</dt><dd>{date} · {pod.time}</dd></div>
         <div><dt>만남장소</dt><dd>{pod.meeting}</dd></div>
         <div><dt>참여 인원</dt><dd>{pod.participants}명{pod.capacity !== null && <span> / 최대 {pod.capacity}명</span>}</dd></div>
+        {formatPodConditions(pod).length > 0 && <div><dt>참여 조건</dt><dd>{formatPodConditions(pod).join(' · ')}</dd></div>}
         {pod.note && <div><dt>참고</dt><dd>{pod.note}</dd></div>}
       </dl>
     </div>

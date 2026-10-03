@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { restaurantDetails } from './data/restaurantDetails';
 import { PODS_STORAGE_KEY } from './data/pods';
+import { LATEST_COHORT } from './data/profile';
+import { formatCohortRange, genderOptions } from './lib/podFilters';
 
 function dateValue(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -12,7 +14,7 @@ function nextLunchDate() {
   return dateValue(date);
 }
 
-const steps = ['식당', '일정', '만남장소'];
+const steps = ['식당', '일정·조건', '만남장소'];
 
 export default function CreatePod({ initialPlace, places, onClose, onCreated, onComplete }) {
   const firstStep = initialPlace ? 1 : 0;
@@ -22,8 +24,12 @@ export default function CreatePod({ initialPlace, places, onClose, onCreated, on
   const [date, setDate] = useState(nextLunchDate);
   const [time, setTime] = useState('12:00');
   const [capacity, setCapacity] = useState('4');
+  const [unlimited, setUnlimited] = useState(false);
   const [meeting, setMeeting] = useState('');
   const [podTitle, setPodTitle] = useState('');
+  const [gender, setGender] = useState('any');
+  const [cohortMin, setCohortMin] = useState('');
+  const [cohortMax, setCohortMax] = useState('');
   const [error, setError] = useState('');
   const [created, setCreated] = useState(false);
   const submitted = useRef(false);
@@ -38,7 +44,13 @@ export default function CreatePod({ initialPlace, places, onClose, onCreated, on
   function goTo(next) { setError(''); setStep(next); }
   function validSchedule() {
     return date && time && new Date(`${date}T${time}`).getTime() > Date.now()
-      && Number.isInteger(Number(capacity)) && Number(capacity) >= 2;
+      && (unlimited || (Number.isInteger(Number(capacity)) && Number(capacity) >= 2));
+  }
+  const cohortValue = value => value.trim() === '' ? null : Number(value);
+  function validConditions() {
+    const [min, max] = [cohortValue(cohortMin), cohortValue(cohortMax)];
+    const valid = value => value === null || (Number.isInteger(value) && value >= 1 && value <= LATEST_COHORT);
+    return valid(min) && valid(max) && (min === null || max === null || min <= max);
   }
   function advance(event) {
     event.preventDefault();
@@ -49,13 +61,18 @@ export default function CreatePod({ initialPlace, places, onClose, onCreated, on
       setStep(1);
       return;
     }
+    if (step >= 1 && !validConditions()) {
+      setError(`사번은 1~${LATEST_COHORT} 사이로, 시작 사번이 끝 사번보다 크지 않게 입력해주세요.`);
+      setStep(1);
+      return;
+    }
     if (step >= 2 && !meeting.trim()) { setStep(2); setError('만남장소를 입력해주세요.'); return; }
     if (step < 3) { goTo(step + 1); return; }
     if (submitted.current) return;
     try {
       const previous = JSON.parse(localStorage.getItem(PODS_STORAGE_KEY) || '[]');
       const pod = { id: crypto.randomUUID(), title: podTitle.trim(), restaurantId: place.id, restaurantName: place.name,
-        date, time, capacity: Number(capacity), meeting: meeting.trim(), createdAt: new Date().toISOString() };
+        date, time, capacity: unlimited ? null : Number(capacity), gender, cohortMin: cohortValue(cohortMin), cohortMax: cohortValue(cohortMax), meeting: meeting.trim(), createdAt: new Date().toISOString() };
       localStorage.setItem(PODS_STORAGE_KEY, JSON.stringify([pod, ...(Array.isArray(previous) ? previous : [])]));
       submitted.current = true;
       setCreated(true);
@@ -63,6 +80,7 @@ export default function CreatePod({ initialPlace, places, onClose, onCreated, on
     } catch { setError('저장하지 못했어요. 다시 시도해주세요.'); }
   }
 
+  const cohortText = formatCohortRange(cohortValue(cohortMin), cohortValue(cohortMax)) || '제한 없음';
   const formattedDate = new Date(`${date}T12:00`).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' });
   const heading = created ? '팟을 만들었어요' : ['어디서 먹을까요?', '언제 만날까요?', '어디서 만날까요?', '최종 확인'][step];
   return <section className="pod-page" aria-labelledby="pod-title">
@@ -100,7 +118,23 @@ export default function CreatePod({ initialPlace, places, onClose, onCreated, on
             <label htmlFor="pod-post-title">제목<input id="pod-post-title" type="text" value={podTitle} placeholder="예: 오늘 점심 같이 드실 분!" maxLength={80} required onChange={event => setPodTitle(event.target.value)} /></label>
             <label htmlFor="pod-date">날짜<input id="pod-date" type="date" value={date} min={dateValue(new Date())} required onChange={event => setDate(event.target.value)} /></label>
             <label htmlFor="pod-time">시간<input id="pod-time" type="time" value={time} required onChange={event => setTime(event.target.value)} /></label>
-            <label htmlFor="pod-capacity">최대 인원수 <small>본인 포함</small><div className="pod-capacity"><input id="pod-capacity" type="number" inputMode="numeric" min="2" step="1" value={capacity} required onChange={event => setCapacity(event.target.value)} /><span>명</span></div></label>
+            <label htmlFor="pod-capacity">최대 인원수 <small>본인 포함</small><div className="pod-capacity"><input id="pod-capacity" type="number" inputMode="numeric" min="2" step="1" value={unlimited ? '' : capacity} placeholder={unlimited ? '제한 없음' : undefined} disabled={unlimited} required={!unlimited} onChange={event => setCapacity(event.target.value)} />{!unlimited && <span>명</span>}</div></label>
+            <label className="pod-unlimited"><input type="checkbox" checked={unlimited} onChange={event => setUnlimited(event.target.checked)} />인원 제한 없음</label>
+            <fieldset className="pod-conditions">
+              <legend>참여 조건</legend>
+              <fieldset className="pod-condition-group"><legend>성별</legend>
+                <div className="pod-segmented">
+                  {genderOptions.map(([key, label]) => <label key={key}><input type="radio" name="pod-gender" value={key} checked={gender === key} onChange={() => setGender(key)} /><span>{label}</span></label>)}
+                </div>
+              </fieldset>
+              <fieldset className="pod-condition-group"><legend>사번 범위 <small>비워두면 제한 없음 · 신입 {LATEST_COHORT}사번</small></legend>
+                <div className="pod-cohort-range">
+                  <label className="pod-capacity"><span className="visually-hidden">시작 사번</span><input type="number" inputMode="numeric" min="1" max={LATEST_COHORT} step="1" placeholder="예: 30" value={cohortMin} onChange={event => setCohortMin(event.target.value)} /><span aria-hidden="true">사번</span></label>
+                  <span aria-hidden="true">~</span>
+                  <label className="pod-capacity"><span className="visually-hidden">끝 사번</span><input type="number" inputMode="numeric" min="1" max={LATEST_COHORT} step="1" placeholder="예: 34" value={cohortMax} onChange={event => setCohortMax(event.target.value)} /><span aria-hidden="true">사번</span></label>
+                </div>
+              </fieldset>
+            </fieldset>
           </div>}
           {!created && step === 2 && <div className="pod-fields">
             <label htmlFor="pod-meeting">만남장소<textarea id="pod-meeting" value={meeting} onChange={event => setMeeting(event.target.value)} placeholder="예: 회사 1층 로비, 식당 입구 앞" maxLength={200} rows={4} required /></label>
@@ -112,7 +146,9 @@ export default function CreatePod({ initialPlace, places, onClose, onCreated, on
               <div><dt>제목</dt><dd>{podTitle}</dd></div>
               <div><dt>날짜</dt><dd>{formattedDate}</dd></div>
               <div><dt>시간</dt><dd>{time}</dd></div>
-              <div><dt>인원</dt><dd>최대 {capacity}명 <small>본인 포함</small></dd></div>
+              <div><dt>인원</dt><dd>{unlimited ? '제한 없음' : <>최대 {capacity}명 <small>본인 포함</small></>}</dd></div>
+              <div><dt>성별</dt><dd>{genderOptions.find(([key]) => key === gender)[1]}</dd></div>
+              <div><dt>사번</dt><dd>{cohortText}</dd></div>
               <div><dt>만남장소</dt><dd>{meeting}</dd></div>
             </dl>
           </div>}
