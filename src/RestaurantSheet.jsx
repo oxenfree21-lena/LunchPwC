@@ -5,7 +5,7 @@ const COLLAPSED_HEIGHT = 80;
 export const INITIAL_SHEET_HEIGHT = 360;
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
-export default function RestaurantSheet({ onHeightChange, places }) {
+export default function RestaurantSheet({ onHeightChange, places, onSelect }) {
   const sheetRef = useRef(null);
   const gesture = useRef(null);
   const suppressClick = useRef(false);
@@ -14,6 +14,7 @@ export default function RestaurantSheet({ onHeightChange, places }) {
   const stops = useRef([COLLAPSED_HEIGHT, 300, 600]);
   const [height, setHeight] = useState(INITIAL_SHEET_HEIGHT);
   const [dragging, setDragging] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(() => window.matchMedia('(min-width: 768px)').matches);
 
   function updateHeight(value) {
     heightRef.current = value;
@@ -28,17 +29,24 @@ export default function RestaurantSheet({ onHeightChange, places }) {
 
   useEffect(() => {
     const parent = sheetRef.current.parentElement;
-    const observer = new ResizeObserver(() => {
-      // Leave the floating search bar accessible even when fully expanded.
-      const inset = window.matchMedia('(min-width: 768px)').matches ? 128 : 104;
-      const max = Math.max(COLLAPSED_HEIGHT, parent.clientHeight - inset);
-      stops.current = [COLLAPSED_HEIGHT, Math.max(COLLAPSED_HEIGHT, Math.min(380, max * 0.6)), max];
+    const desktop = window.matchMedia('(min-width: 768px)');
+    function resize() {
+      setIsDesktop(desktop.matches);
       gesture.current = null;
       setDragging(false);
+      if (desktop.matches) return;
+      // Leave the floating search bar accessible even when fully expanded.
+      const max = Math.max(COLLAPSED_HEIGHT, parent.clientHeight - 104);
+      stops.current = [COLLAPSED_HEIGHT, Math.max(COLLAPSED_HEIGHT, Math.min(380, max * 0.6)), max];
       snapTo(snapIndex.current);
-    });
+    }
+    const observer = new ResizeObserver(resize);
     observer.observe(parent);
-    return () => observer.disconnect();
+    desktop.addEventListener('change', resize);
+    return () => {
+      observer.disconnect();
+      desktop.removeEventListener('change', resize);
+    };
   }, [onHeightChange]);
 
   function startDrag(event) {
@@ -79,7 +87,7 @@ export default function RestaurantSheet({ onHeightChange, places }) {
     <section
       ref={sheetRef}
       className={`restaurant-sheet${dragging ? ' is-dragging' : ''}`}
-      style={{ height }}
+      style={{ '--mobile-sheet-height': `${height}px` }}
       aria-label="식당 목록"
     >
       <button
@@ -109,8 +117,8 @@ export default function RestaurantSheet({ onHeightChange, places }) {
       <header className="restaurant-sheet-header">
         <h2>주변 식당 <span>{places.length}</span></h2>
       </header>
-      <div id="restaurant-sheet-content" className="sheet-content" inert={height <= COLLAPSED_HEIGHT}>
-        <RestaurantList places={places} />
+      <div id="restaurant-sheet-content" className="sheet-content" inert={!isDesktop && height <= COLLAPSED_HEIGHT}>
+        <RestaurantList places={places} onSelect={onSelect} />
       </div>
     </section>
   );

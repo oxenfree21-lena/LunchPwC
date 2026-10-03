@@ -1,7 +1,7 @@
 import React from 'react';
 import { restaurantDetails, distanceOrigin, distanceInMeters, formatDistance, formatPrice } from './data/restaurantDetails';
 
-function PhotoSlots({ name }) {
+export function PhotoSlots({ name }) {
   return (
     <div className="restaurant-photos" role="img" aria-label={`${name} 사진 준비 중, 사진 3장 자리`}>
       {[0, 1, 2].map(index => <div className="restaurant-photo-slot" key={index} aria-hidden="true">
@@ -12,7 +12,7 @@ function PhotoSlots({ name }) {
   );
 }
 
-export default function RestaurantList({ places }) {
+export default function RestaurantList({ places, onSelect }) {
   const sorted = places.map(place => ({ ...place, distance: distanceInMeters(place) }))
     .sort((a, b) => a.distance - b.distance);
   return <>
@@ -21,6 +21,7 @@ export default function RestaurantList({ places }) {
         const details = restaurantDetails[place.id] ?? {};
         return <li className="restaurant-list-item" key={place.id}>
           <article aria-labelledby={`restaurant-name-${place.id}`}>
+            <button className="restaurant-list-open" type="button" aria-label={`${place.name} 상세 보기`} onClick={() => onSelect(place)} />
             <div className="restaurant-list-title">
               <h3 id={`restaurant-name-${place.id}`}>{place.name}</h3>
               <span className="restaurant-list-rating" aria-label={`데모 평점 ${place.rating.toFixed(1)}점`}><span aria-hidden="true">★</span> {place.rating.toFixed(1)}</span>
@@ -37,6 +38,5 @@ export default function RestaurantList({ places }) {
         </li>;
       })}
     </ol>
-    <p className="restaurant-list-note">공개 메뉴 기준 가격으로, 매장 가격과 다를 수 있어요.</p>
   </>;
 }

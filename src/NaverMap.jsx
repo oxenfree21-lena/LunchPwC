@@ -21,7 +21,7 @@ function minimumZoom(width, height) {
   return Math.min(MAX_ZOOM, Math.max(15, Math.ceil(Math.log2(metersPerPixelAtZoomZero * Math.max(width, height) / 1800))));
 }
 
-export default function NaverMap({ places = EMPTY_PLACES }) {
+export default function NaverMap({ places = EMPTY_PLACES, onSelect }) {
   const container = useRef(null);
   const mapRef = useRef(null);
   const [status, setStatus] = useState('loading');
@@ -53,7 +53,7 @@ export default function NaverMap({ places = EMPTY_PLACES }) {
       const minimum = minimumZoom(element.clientWidth, element.clientHeight);
       map = new maps.Map(element, {
         center: new maps.LatLng(STATION.lat, STATION.lng),
-        zoom: Math.max(17, minimum),
+        zoom: minimum,
         minZoom: minimum,
         maxZoom: MAX_ZOOM,
         maxBounds: new maps.LatLngBounds(
@@ -132,11 +132,16 @@ export default function NaverMap({ places = EMPTY_PLACES }) {
       const content = document.createElement('div');
       content.className = 'restaurant-marker';
       content.dataset.restaurantId = place.id;
-      content.setAttribute('role', 'img');
-      content.setAttribute('aria-label', `${place.name}, 별점 ${place.rating.toFixed(1)}점`);
       const dot = document.createElement('span');
       dot.className = 'restaurant-marker-dot';
-      const label = document.createElement('span');
+      const label = document.createElement('button');
+      label.type = 'button';
+      label.setAttribute('aria-label', `${place.name} 상세 보기, 별점 ${place.rating.toFixed(1)}점`);
+      label.addEventListener('pointerdown', event => event.stopPropagation());
+      label.addEventListener('click', event => {
+        event.stopPropagation();
+        onSelect?.(place);
+      });
       label.className = 'restaurant-marker-label';
       const name = document.createElement('span');
       name.className = 'restaurant-marker-name';
@@ -188,7 +193,7 @@ export default function NaverMap({ places = EMPTY_PLACES }) {
       listeners.forEach(listener => maps.Event.removeListener(listener));
       markers.forEach(marker => marker.setMap(null));
     };
-  }, [places, status]);
+  }, [places, status, onSelect]);
 
   function changeZoom(delta) {
     const map = mapRef.current;
