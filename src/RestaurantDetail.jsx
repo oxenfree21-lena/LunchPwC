@@ -3,7 +3,7 @@ import { PhotoSlots } from './RestaurantList';
 import ReviewSheet from './ReviewSheet';
 import { readReviews, saveReview, useLocalActivity, withMyReviews } from './data/localActivity';
 import { restaurantReviews } from './data/restaurantReviews';
-import { restaurantDetails, distanceOrigin, distanceInMeters, formatDistance, formatPrice } from './data/restaurantDetails';
+import { demoDisclaimer, restaurantDetails, distanceInMeters, formatDistance, formatPrice } from './data/restaurantDetails';
 
 const tabs = ['메뉴', '리뷰', '정보'];
 const VISIBLE_REVIEWS = 4;
@@ -51,7 +51,7 @@ export default function RestaurantDetail({ place: selectedPlace, onBack, favorit
         <div className="detail-meta">
           <span className="detail-rating"><span aria-hidden="true">★</span> {place.rating.toFixed(1)}</span>
           <span>리뷰 {reviewCount}</span>
-          <span className="detail-distance" title={`${distanceOrigin.label} 기준 직선거리`}>{distance}</span>
+          <span className="detail-distance">{distance}</span>
           <button type="button" className={`detail-heart${favorite ? ' is-saved' : ''}`} aria-label="찜하기" aria-pressed={favorite} onClick={() => {
             try { onToggleFavorite(); setFavoriteError(''); }
             catch { setFavoriteError('찜을 저장하지 못했어요. 다시 시도해주세요.'); }
@@ -103,11 +103,11 @@ export default function RestaurantDetail({ place: selectedPlace, onBack, favorit
         {activeTab === '정보' && <dl className="detail-info">
           <div><dt>분류</dt><dd>{details.category ?? '확인 중'}</dd></div>
           <div><dt>가격대</dt><dd>{formatPrice(details)}</dd></div>
-          <div><dt>거리</dt><dd>{distance}<small>{distanceOrigin.label} 기준 · 직선거리</small></dd></div>
+          <div><dt>거리</dt><dd>{distance}</dd></div>
           <div><dt>주소</dt><dd className={details.address ? undefined : 'info-pending'}>{details.address ?? '준비 중'}</dd></div>
           <div><dt>영업시간</dt><dd className={details.hours ? undefined : 'info-pending'}>{details.hours ?? '준비 중'}</dd></div>
         </dl>}
-        <p className="detail-disclaimer">식당 이름, 메뉴, 가격, 주소, 영업시간, 리뷰는 모두 데모용 가상 정보예요. 실제 식당과는 관련이 없어요.</p>
+        <p className="detail-disclaimer">{demoDisclaimer}</p>
       </div>
     </div>
     {writing && <ReviewSheet name={place.name} onClose={() => setWriting(false)} onSubmit={review => {

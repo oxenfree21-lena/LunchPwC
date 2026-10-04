@@ -26,6 +26,9 @@ const info = {
   22: { category: '양식', address: '서울 용산구 한강대로40길 20, 2층', hours: '화~일 12:00~22:00 · 월 휴무', tags: ['분위기 좋은', '조용한'] },
 };
 
+// Shown under the map list and on every restaurant detail page.
+export const demoDisclaimer = '식당 이름, 메뉴, 가격, 주소, 영업시간, 리뷰는 모두 데모용 가상 정보이고, 사진은 AI로 생성한 이미지예요. 실제 식당과는 관련이 없어요.';
+
 export const situationTags = [...new Set(Object.values(info).flatMap(details => details.tags))];
 
 export const restaurantDetails = Object.fromEntries(Object.entries(info).map(([id, details]) => {
@@ -35,8 +38,8 @@ export const restaurantDetails = Object.fromEntries(Object.entries(info).map(([i
     priceMin: prices.length ? Math.min(...prices) : null, priceMax: prices.length ? Math.max(...prices) : null }];
 }));
 
-// Replace this one reference once the company's entrance coordinates are supplied.
-export const distanceOrigin = { label: '신용산역', lat: 37.52917, lng: 126.96783 };
+// Company building, fitted to the content team's per-restaurant distances (all within 2m).
+export const distanceOrigin = { label: '회사', lat: 37.52894, lng: 126.96862 };
 
 export function distanceInMeters(place, origin = distanceOrigin) {
   const radians = degrees => degrees * Math.PI / 180;

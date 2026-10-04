@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import RestaurantList from './RestaurantList';
-import { situationTags } from './data/restaurantDetails';
+import { demoDisclaimer, situationTags } from './data/restaurantDetails';
 
 const COLLAPSED_HEIGHT = 80;
 export const INITIAL_SHEET_HEIGHT = 360;
@@ -125,6 +125,7 @@ export default function RestaurantSheet({ onHeightChange, places, tag, onTagChan
         </div>
         {places.length === 0 ? <p className="restaurant-list-empty">조건에 맞는 식당이 없어요</p>
           : <RestaurantList places={places} onSelect={onSelect} />}
+        <p className="detail-disclaimer restaurant-list-disclaimer">{demoDisclaimer}</p>
       </div>
     </section>
   );
