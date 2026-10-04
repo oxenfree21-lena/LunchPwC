@@ -20,7 +20,7 @@ export function parseRestaurants(csv) {
   if (quoted) throw new Error('식당 CSV의 따옴표를 확인해주세요.');
   if (field || row.length) { row.push(field); rows.push(row); }
   const [headers, ...records] = rows;
-  const required = ['id', 'name', 'latitude', 'longitude', 'rating', 'author', 'review'];
+  const required = ['id', 'name', 'latitude', 'longitude', 'rating', 'reviewCount'];
   if (!headers || required.some(key => !headers.includes(key))) throw new Error('식당 CSV의 열 이름을 확인해주세요.');
   const ids = new Set();
   return records.map((values, index) => {
@@ -28,12 +28,13 @@ export function parseRestaurants(csv) {
     const place = {
       id: record.id, name: record.name,
       lat: Number(record.latitude), lng: Number(record.longitude), rating: Number(record.rating),
-      author: record.author, review: record.review,
+      reviewCount: Number(record.reviewCount),
     };
     if (values.length !== headers.length || required.some(key => !record[key]?.trim())
       || ids.has(place.id) || !Number.isFinite(place.lat) || Math.abs(place.lat) > 90
       || !Number.isFinite(place.lng) || Math.abs(place.lng) > 180
-      || !Number.isFinite(place.rating) || place.rating < 0 || place.rating > 5) {
+      || !Number.isFinite(place.rating) || place.rating < 0 || place.rating > 5
+      || !Number.isInteger(place.reviewCount) || place.reviewCount < 0) {
       throw new Error(`식당 CSV ${index + 2}행의 값을 확인해주세요.`);
     }
     ids.add(place.id);

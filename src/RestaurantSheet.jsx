@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import RestaurantList from './RestaurantList';
+import { situationTags } from './data/restaurantDetails';
 
 const COLLAPSED_HEIGHT = 80;
 export const INITIAL_SHEET_HEIGHT = 360;
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
-export default function RestaurantSheet({ onHeightChange, places, onSelect }) {
+export default function RestaurantSheet({ onHeightChange, places, tag, onTagChange, onSelect }) {
   const sheetRef = useRef(null);
   const gesture = useRef(null);
   const suppressClick = useRef(false);
@@ -118,7 +119,12 @@ export default function RestaurantSheet({ onHeightChange, places, onSelect }) {
         <h2>주변 식당 <span>{places.length}</span></h2>
       </header>
       <div id="restaurant-sheet-content" className="sheet-content" inert={!isDesktop && height <= COLLAPSED_HEIGHT}>
-        <RestaurantList places={places} onSelect={onSelect} />
+        <div className="situation-tags" role="group" aria-label="상황별로 식당 거르기">
+          {['', ...situationTags].map(item => <button type="button" key={item || 'all'} aria-pressed={tag === item}
+            onClick={() => onTagChange(tag === item ? '' : item)}>{item || '전체'}</button>)}
+        </div>
+        {places.length === 0 ? <p className="restaurant-list-empty">조건에 맞는 식당이 없어요</p>
+          : <RestaurantList places={places} onSelect={onSelect} />}
       </div>
     </section>
   );

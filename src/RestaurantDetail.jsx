@@ -1,18 +1,29 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { PhotoSlots } from './RestaurantList';
 import ReviewSheet from './ReviewSheet';
-import { readReviews, saveReview, useLocalActivity } from './data/localActivity';
+import { readReviews, saveReview, useLocalActivity, withMyReviews } from './data/localActivity';
+import { restaurantReviews } from './data/restaurantReviews';
 import { restaurantDetails, distanceOrigin, distanceInMeters, formatDistance, formatPrice } from './data/restaurantDetails';
 
 const tabs = ['메뉴', '리뷰', '정보'];
+const VISIBLE_REVIEWS = 4;
 
-export default function RestaurantDetail({ place, onBack, favorite, onToggleFavorite, onCreatePod }) {
+function Stars({ rating }) {
+  return <div className="review-stars" role="img" aria-label={`${rating}점`}>
+    <span className="review-stars-fill" style={{ width: `${rating / 5 * 100}%` }} aria-hidden="true">★★★★★</span>
+    <span aria-hidden="true">★★★★★</span>
+  </div>;
+}
+
+export default function RestaurantDetail({ place: selectedPlace, onBack, favorite, onToggleFavorite, onCreatePod }) {
   const [activeTab, setActiveTab] = useState('메뉴');
   const [writing, setWriting] = useState(false);
   useLocalActivity();
+  const place = withMyReviews(selectedPlace);
   const myReviews = readReviews(place.id);
   const [favoriteError, setFavoriteError] = useState('');
-  const reviews = [...myReviews, place];
+  const reviewCount = place.reviewCount;
+  const reviews = [...myReviews, ...(restaurantReviews[place.id] ?? [])].slice(0, VISIBLE_REVIEWS);
   const backButton = useRef(null);
   const details = restaurantDetails[place.id] ?? {};
   const distance = formatDistance(distanceInMeters(place));
@@ -39,7 +50,7 @@ export default function RestaurantDetail({ place, onBack, favorite, onToggleFavo
         <h2 id="detail-name">{place.name}</h2>
         <div className="detail-meta">
           <span className="detail-rating"><span aria-hidden="true">★</span> {place.rating.toFixed(1)}</span>
-          <span>리뷰 {reviews.length}</span>
+          <span>리뷰 {reviewCount}</span>
           <span className="detail-distance" title={`${distanceOrigin.label} 기준 직선거리`}>{distance}</span>
           <button type="button" className={`detail-heart${favorite ? ' is-saved' : ''}`} aria-label="찜하기" aria-pressed={favorite} onClick={() => {
             try { onToggleFavorite(); setFavoriteError(''); }
@@ -49,7 +60,7 @@ export default function RestaurantDetail({ place, onBack, favorite, onToggleFavo
           </button>
         </div>
         {favoriteError && <p className="pod-error" role="alert">{favoriteError}</p>}
-        <PhotoSlots name={place.name} />
+        <PhotoSlots id={place.id} name={place.name} />
         <div className="detail-actions">
           <button type="button" className="detail-create-pod" onClick={() => onCreatePod(place)}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><path d="M12 5v14M5 12h14" strokeLinecap="round" /></svg>
@@ -70,25 +81,33 @@ export default function RestaurantDetail({ place, onBack, favorite, onToggleFavo
             const next = event.key === 'Home' ? 0 : event.key === 'End' ? 2 : (index + (event.key === 'ArrowRight' ? 1 : 2)) % 3;
             selectTab(tabs[next]);
             event.currentTarget.parentElement.children[next].focus();
-          }}>{tab}{tab === '리뷰' && <span>{reviews.length}</span>}</button>)}
+          }}>{tab}{tab === '리뷰' && <span>{reviewCount}</span>}</button>)}
       </div>
       <div className="detail-panel" id="detail-tab-panel" role="tabpanel" aria-labelledby={`detail-tab-${tabs.indexOf(activeTab)}`}>
-        {activeTab === '메뉴' && <div className="detail-empty">메뉴 준비 중</div>}
+        {activeTab === '메뉴' && (details.menus?.length ? <ul className="detail-menu">
+          {details.menus.map(item => <li key={item.name}>
+            <span>{item.name}{item.signature && <small>대표</small>}</span>
+            <span className="detail-menu-price">{item.price.toLocaleString('ko-KR')}원</span>
+          </li>)}
+        </ul> : <div className="detail-empty">메뉴 준비 중</div>)}
         {activeTab === '리뷰' && reviews.map((review, index) => <article className="detail-review" key={review.id ?? index}>
             <div className="review-author"><span className="review-avatar" aria-hidden="true">{review.author.slice(0, 1)}</span><strong>{review.author}</strong></div>
-            <div className="review-stars" aria-label={`${review.rating}점`}>{'★'.repeat(review.rating)}<span aria-hidden="true">{'★'.repeat(5 - review.rating)}</span></div>
+            <Stars rating={review.rating} />
             {review.menu && <div className="review-menu-name">{review.menu}</div>}
             <p>{review.review}</p>
             {review.tags?.length > 0 && <div className="review-selected-tags">{review.tags.map(tag => <span key={tag}>{tag}</span>)}</div>}
           </article>
         )}
+        {/* Placeholder until the full review list exists; intentionally does nothing. */}
+        {activeTab === '리뷰' && reviewCount > reviews.length && <button type="button" className="detail-more-reviews">리뷰 더보기</button>}
         {activeTab === '정보' && <dl className="detail-info">
           <div><dt>분류</dt><dd>{details.category ?? '확인 중'}</dd></div>
           <div><dt>가격대</dt><dd>{formatPrice(details)}</dd></div>
           <div><dt>거리</dt><dd>{distance}<small>{distanceOrigin.label} 기준 · 직선거리</small></dd></div>
-          <div><dt>주소</dt><dd className="info-pending">준비 중</dd></div>
-          <div><dt>영업시간</dt><dd className="info-pending">준비 중</dd></div>
+          <div><dt>주소</dt><dd className={details.address ? undefined : 'info-pending'}>{details.address ?? '준비 중'}</dd></div>
+          <div><dt>영업시간</dt><dd className={details.hours ? undefined : 'info-pending'}>{details.hours ?? '준비 중'}</dd></div>
         </dl>}
+        <p className="detail-disclaimer">식당 이름, 메뉴, 가격, 주소, 영업시간, 리뷰는 모두 데모용 가상 정보예요. 실제 식당과는 관련이 없어요.</p>
       </div>
     </div>
     {writing && <ReviewSheet name={place.name} onClose={() => setWriting(false)} onSubmit={review => {

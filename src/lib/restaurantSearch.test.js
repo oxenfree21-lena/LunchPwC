@@ -9,8 +9,8 @@ const places = parseRestaurants(readFileSync(new URL('../data/restaurants.csv', 
 const search = query => searchRestaurants(places, restaurantDetails, query);
 
 test('searches local names regardless of whitespace', () => {
-  assert.equal(search('  쌤쌤쌤  ')[0].id, '15');
-  assert.equal(search('중화 객잔 수')[0].id, '12');
+  assert.equal(search('  쌤쌤썸  ')[0].id, '15');
+  assert.equal(search('중화 객잔 담')[0].id, '12');
 });
 
 test('finds menu and category matches with all query terms', () => {
@@ -22,5 +22,5 @@ test('finds menu and category matches with all query terms', () => {
 
 test('unknown, blank and review-only terms do not return unrelated restaurants', () => {
   for (const query of ['', '   ', '없는식당123', '감사보고서']) assert.equal(search(query).length, 0);
-  assert.ok(search('돈뜰').some(place => place.id === '7'));
+  assert.ok(search('소뜰').some(place => place.id === '7'));
 });

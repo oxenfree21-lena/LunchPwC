@@ -1,8 +1,6 @@
 import { restaurantDetails } from '../data/restaurantDetails.js';
-import { myProfile } from '../data/profile.js';
 
-export const emptyPodFilters = { food: '', date: '', time: '', capacity: '', gender: '', cohortMin: '', cohortMax: '' };
-export const genderOptions = [['any', '제한 없음'], ['male', '남자'], ['female', '여자']];
+export const emptyPodFilters = { food: '', date: '', time: '', capacity: '' };
 export const foodTypes = [...new Set(Object.values(restaurantDetails).map(item => item.category?.split(' · ')[0]).filter(Boolean))];
 export const timeSlots = [
   ['morning', '아침 · 06–11시', 6, 11],
@@ -27,45 +25,16 @@ export function filterPods(pods, filters) {
     if (filters.capacity === 'medium' && !(pod.capacity >= 5 && pod.capacity <= 6)) return false;
     if (filters.capacity === 'large' && !(pod.capacity !== null && pod.capacity >= 7)) return false;
     if (filters.capacity === 'unlimited' && pod.capacity !== null) return false;
-    // Gender and cohort filters keep pods that someone matching them could join.
-    if (filters.gender && !genderAllows(pod, filters.gender)) return false;
-    if (filters.cohortMin || filters.cohortMax) {
-      const [podMin, podMax] = [pod.cohortMin ?? -Infinity, pod.cohortMax ?? Infinity];
-      const [min, max] = [filters.cohortMin ? Number(filters.cohortMin) : -Infinity, filters.cohortMax ? Number(filters.cohortMax) : Infinity];
-      if (podMin > max || min > podMax) return false;
-    }
     return true;
   });
 }
 
 export function countPodFilters(filters) {
-  return ['food', 'date', 'time', 'capacity', 'gender'].filter(key => filters[key]).length
-    + (filters.cohortMin || filters.cohortMax ? 1 : 0);
+  return Object.values(filters).filter(Boolean).length;
 }
 
-function genderAllows(pod, gender) {
-  return !pod.gender || pod.gender === 'any' || pod.gender === gender;
-}
-
-export function formatCohortRange(min, max) {
-  if (min == null && max == null) return '';
-  if (min === max) return `${min}사번`;
-  return `${min ?? ''}~${max ?? ''}사번`;
-}
-
-export function formatPodConditions(pod) {
-  return [pod.gender === 'male' ? '남자만' : pod.gender === 'female' ? '여자만' : '', formatCohortRange(pod.cohortMin ?? null, pod.cohortMax ?? null)].filter(Boolean);
-}
-
-export function meetsPodConditions(pod, profile = myProfile) {
-  if (profile.gender && !genderAllows(pod, profile.gender)) return false;
-  if (pod.cohortMin != null && profile.cohort < pod.cohortMin) return false;
-  if (pod.cohortMax != null && profile.cohort > pod.cohortMax) return false;
-  return true;
-}
-
-export function canJoinPod(pod, now = new Date(), profile = myProfile) {
-  return !pod.isMine && !pod.joined && !pod.cancelledAt && meetsPodConditions(pod, profile)
+export function canJoinPod(pod, now = new Date()) {
+  return !pod.isMine && !pod.joined && !pod.cancelledAt
     && new Date(`${pod.date}T${pod.time}`).getTime() > now.getTime()
     && (pod.capacity === null || pod.participants < pod.capacity);
 }
@@ -73,4 +42,11 @@ export function canJoinPod(pod, now = new Date(), profile = myProfile) {
 export function pickRandomPod(pods, filters, now = new Date(), random = Math.random) {
   const candidates = filterPods(pods, filters).filter(pod => canJoinPod(pod, now));
   return candidates.length ? candidates[Math.floor(random() * candidates.length)] : null;
+}
+
+// Pods on the same date in the same meal (lunch before 16:00, dinner after) overlap.
+export const mealPeriod = time => time < '16:00' ? '점심' : '저녁';
+
+export function findConflicts(pod, appointments) {
+  return appointments.filter(item => item.id !== pod.id && item.date === pod.date && mealPeriod(item.time) === mealPeriod(pod.time));
 }

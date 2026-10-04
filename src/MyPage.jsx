@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { formatPodDate } from './data/pods';
 import { restaurants } from './data/restaurants';
 import { restaurantDetails } from './data/restaurantDetails';
-import { cancelCreatedPod, cancelParticipation, readFavorites, readReviews, readUpcomingAppointments, toggleFavorite, useLocalActivity, participationKey } from './data/localActivity';
+import { cancelCreatedPod, cancelParticipation, readFavorites, readReviews, readUpcomingAppointments, toggleFavorite, useLocalActivity, participationKey, withMyReviews } from './data/localActivity';
 import { myProfile } from './data/profile';
 import PodConfirmation from './PodConfirmation';
+import PodCancelFlow from './PodCancelFlow';
 
 function MyIcon({ type }) {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -19,10 +20,11 @@ function MyIcon({ type }) {
 export default function MyPage({ onSelectRestaurant }) {
   useLocalActivity();
   const [confirmedPod, setConfirmedPod] = useState(null);
+  const [cancellingPod, setCancellingPod] = useState(null);
   const [error, setError] = useState('');
   const appointments = readUpcomingAppointments();
   const favoriteIds = readFavorites();
-  const favorites = restaurants.filter(place => favoriteIds.has(place.id));
+  const favorites = restaurants.filter(place => favoriteIds.has(place.id)).map(withMyReviews);
   const reviews = restaurants.flatMap(place => readReviews(place.id).map(review => ({ ...review, place })))
     .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
   function update(action) {
@@ -37,7 +39,7 @@ export default function MyPage({ onSelectRestaurant }) {
         <circle cx="28" cy="21" r="8" fill="#b0b8c1" />
         <path d="M13 43a15 15 0 0 1 30 0c-8 5-22 5-30 0Z" fill="#b0b8c1" />
       </svg>
-      <h2>{myProfile.nickname}<span className="my-cohort">{myProfile.cohort}사번</span></h2>
+      <h2>{myProfile.nickname}</h2>
     </header>
 
     {error && <p className="my-error" role="alert">{error}</p>}
@@ -46,7 +48,7 @@ export default function MyPage({ onSelectRestaurant }) {
         <h2 id="my-appointments-heading">다가오는 약속 <span>{appointments.length}</span></h2>
         {appointments.length === 0 && <div className="my-empty"><MyIcon type="time" /><p>다가오는 약속이 없어요</p></div>}
         {appointments.map(appointment => <article className="my-appointment" key={participationKey(appointment)}>
-          <div className="my-appointment-top"><span className="my-confirmed">{appointment.isMine ? '내가 만든 팟' : '참여 확정'}</span><span className="my-appointment-date">{formatPodDate(appointment.date)} · {appointment.time}</span></div>
+          <div className="my-appointment-top"><span className="my-confirmed">{appointment.isMine ? '내가 만든 팟' : '참여 중'}</span><span className="my-appointment-date">{formatPodDate(appointment.date)} · {appointment.time}</span></div>
           <h3>{appointment.restaurantName}</h3>
           <p className="my-appointment-title" title={appointment.title}>{appointment.title}</p>
           <dl className="my-appointment-info">
@@ -55,7 +57,7 @@ export default function MyPage({ onSelectRestaurant }) {
           </dl>
           <div className="my-appointment-actions">
             <button type="button" className="pod-join is-joined" onClick={() => setConfirmedPod(appointment)}>약속 보기</button>
-            <button type="button" className="pod-cancel" onClick={() => update(() => appointment.isMine ? cancelCreatedPod(appointment) : cancelParticipation(appointment))}>{appointment.isMine ? '약속 취소하기' : '참여 취소하기'}</button>
+            <button type="button" className="pod-cancel" onClick={() => setCancellingPod(appointment)}>{appointment.isMine ? '약속 취소하기' : '참여 취소하기'}</button>
           </div>
         </article>)}
       </section>
@@ -83,5 +85,7 @@ export default function MyPage({ onSelectRestaurant }) {
       </section>
     </div>
     {confirmedPod && <PodConfirmation pod={confirmedPod} onClose={() => setConfirmedPod(null)} />}
+    {cancellingPod && <PodCancelFlow pod={cancellingPod} onClose={() => setCancellingPod(null)}
+      onConfirm={() => cancellingPod.isMine ? cancelCreatedPod(cancellingPod) : cancelParticipation(cancellingPod)} />}
   </div>;
 }

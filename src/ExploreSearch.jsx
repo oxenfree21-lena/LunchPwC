@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { restaurantDetails, distanceInMeters, formatDistance } from './data/restaurantDetails';
 import { searchRestaurants } from './lib/restaurantSearch';
 
-const popularTerms = ['쌤쌤쌤', '고기국수', '파스타', '뼈탄집', '한식'];
+const popularTerms = ['쌤쌤썸', '고기국수', '파스타', '뼈불집', '한식'];
 
 export default function ExploreSearch({ places, onSelect, suspended = false }) {
   const [query, setQuery] = useState('');
@@ -54,7 +54,7 @@ export default function ExploreSearch({ places, onSelect, suspended = false }) {
     {open && <section className="restaurant-search-panel" id="restaurant-search-panel" aria-label={searching ? '식당 검색 결과' : '인기 검색어'} ref={panel}>
       <header className="search-panel-heading">
         <h2>{searching ? '검색 결과' : '실시간 인기 검색어'}</h2>
-        {searching ? <span role="status">{results.length}곳</span> : <span className="search-demo-badge">데모</span>}
+        {searching && <span role="status">{results.length}곳</span>}
       </header>
       {searching ? results.length > 0 ? <ul className="search-results">
         {results.map(place => {

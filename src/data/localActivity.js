@@ -1,5 +1,5 @@
 import { useEffect, useReducer } from 'react';
-import { createDemoPods, readSavedPods, PODS_STORAGE_KEY } from './pods.js';
+import { createDemoPods, readDemoPods, readSavedPods, PODS_STORAGE_KEY, CANCELLED_DEMO_PODS_KEY } from './pods.js';
 
 const CHANGE_EVENT = 'lunchpwc:activity-changed';
 const FAVORITES_KEY = 'lunchpwc:favorites';
@@ -20,8 +20,9 @@ function write(key, value) {
 }
 
 // React to changes in this tab as well as other tabs on the same origin.
+// The returned version changes on every update, for memoizing derived data.
 export function useLocalActivity() {
-  const [, refresh] = useReducer(value => value + 1, 0);
+  const [version, refresh] = useReducer(value => value + 1, 0);
   useEffect(() => {
     const onStorage = event => { if (!event.key || event.key.startsWith('lunchpwc:')) refresh(); };
     window.addEventListener(CHANGE_EVENT, refresh);
@@ -31,6 +32,7 @@ export function useLocalActivity() {
       window.removeEventListener('storage', onStorage);
     };
   }, []);
+  return version;
 }
 
 export function readFavorites() {
@@ -49,6 +51,16 @@ export function readReviews(restaurantId) {
     && typeof review.menu === 'string' && Number.isInteger(review.rating)
     && review.rating >= 1 && review.rating <= 5 && Array.isArray(review.tags)
     && review.tags.every(tag => typeof tag === 'string'));
+}
+
+// Blend my reviews into the sample rating and count. Safe to call on an already blended place.
+export function withMyReviews(place) {
+  const base = place.base ?? place;
+  const mine = readReviews(base.id);
+  if (!mine.length) return base;
+  const reviewCount = base.reviewCount + mine.length;
+  const rating = (base.rating * base.reviewCount + mine.reduce((sum, review) => sum + review.rating, 0)) / reviewCount;
+  return { ...base, base, rating, reviewCount };
 }
 
 export function saveReview(restaurantId, review) {
@@ -74,7 +86,12 @@ export function cancelParticipation(pod) {
 }
 
 export function cancelCreatedPod(pod) {
-  if (!pod.isMine || !readSavedPods().some(saved => saved.id === pod.id)) return;
+  if (!pod.isMine) return;
+  if (readDemoPods().some(demo => demo.isMine && demo.id === pod.id)) {
+    write(CANCELLED_DEMO_PODS_KEY, [...new Set([...readArray(CANCELLED_DEMO_PODS_KEY), pod.id])]);
+    return;
+  }
+  if (!readSavedPods().some(saved => saved.id === pod.id)) return;
   write(PODS_STORAGE_KEY, readArray(PODS_STORAGE_KEY).map(saved => saved?.id === pod.id
     ? { ...saved, cancelledAt: new Date().toISOString() } : saved));
 }
@@ -92,7 +109,10 @@ export function readUpcomingAppointments(now = new Date()) {
     const original = demos.find(pod => pod.id === match[1]);
     return original ? [{ ...original, date: match[2], time: match[3], participants: original.participants + 1, joined: true }] : [];
   });
-  return [...readSavedPods(), ...joined]
+  const myDemos = readDemoPods().filter(pod => pod.isMine);
+  // Drop signups to demo pods that now count as mine, even after I cancel them.
+  const myDemoIds = new Set(demos.filter(pod => pod.isMine).map(pod => pod.id));
+  return [...readSavedPods(), ...myDemos, ...joined.filter(pod => !myDemoIds.has(pod.id))]
     .filter(pod => new Date(`${pod.date}T${pod.time}`).getTime() >= now.getTime())
     .sort((a, b) => `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`));
 }

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { formatPodConditions } from './lib/podFilters';
+import { POD_RULE } from './data/podOptions';
 
 export default function PodConfirmation({ pod, onClose }) {
   const dialog = useRef(null);
@@ -27,15 +27,16 @@ export default function PodConfirmation({ pod, onClose }) {
     }}>
     <div className="pod-confirm-scroll">
       <div className="pod-success-icon" aria-hidden="true">✓</div>
-      <h2 id="pod-confirm-title">약속이 확정됐어요</h2>
+      <h2 id="pod-confirm-title">{pod.isMine ? '내가 만든 팟이에요' : '팟에 참여했어요'}</h2>
+      <p className="pod-confirm-notice">{POD_RULE}</p>
       <p className="pod-confirm-subtitle">{pod.title}</p>
       <dl className="pod-confirm-summary">
+        {pod.host && <div><dt>모집자</dt><dd>{pod.host}</dd></div>}
         <div><dt>식당</dt><dd>{pod.restaurantName}</dd></div>
         <div><dt>일시</dt><dd>{date} · {pod.time}</dd></div>
         <div><dt>만남장소</dt><dd>{pod.meeting}</dd></div>
         <div><dt>참여 인원</dt><dd>{pod.participants}명{pod.capacity !== null && <span> / 최대 {pod.capacity}명</span>}</dd></div>
-        {formatPodConditions(pod).length > 0 && <div><dt>참여 조건</dt><dd>{formatPodConditions(pod).join(' · ')}</dd></div>}
-        {pod.note && <div><dt>참고</dt><dd>{pod.note}</dd></div>}
+        {pod.note && <div><dt>메모</dt><dd>{pod.note}</dd></div>}
       </dl>
     </div>
     <footer className="pod-confirm-footer">

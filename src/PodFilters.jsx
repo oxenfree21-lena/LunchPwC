@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { formatPodDate } from './data/pods';
-import { LATEST_COHORT } from './data/profile';
 import { emptyPodFilters, foodTypes, timeSlots, filterPods } from './lib/podFilters';
 
 function Choices({ label, value, options, onChange, className = '' }) {
@@ -56,19 +55,8 @@ export default function PodFilters({ filters, pods, onApply, onClose }) {
         ['', '전체'], ...timeSlots.map(([key, label]) => [key, ...label.split(' · ')]),
       ]} onChange={set('time')} />
       <Choices label="모집 인원" value={draft.capacity} options={[
-        ['', '전체'], ['small', '2–4명'], ['medium', '5–6명'], ['large', '7명 이상'], ['unlimited', '제한 없음'],
+        ['', '전체'], ['small', '2–4명'], ['medium', '5–6명'], ['large', '7–8명'], ['unlimited', '제한 없음'],
       ]} onChange={set('capacity')} />
-      <Choices label="성별" value={draft.gender} options={[
-        ['', '전체'], ['male', '남자 참여 가능'], ['female', '여자 참여 가능'],
-      ]} onChange={set('gender')} />
-      <fieldset className="pod-filter-group">
-        <legend>사번 범위</legend>
-        <div className="pod-filter-cohort">
-          <label><span className="visually-hidden">시작 사번</span><input type="number" inputMode="numeric" min="1" max={LATEST_COHORT} placeholder="예: 30" value={draft.cohortMin} onChange={event => set('cohortMin')(event.target.value)} /><span aria-hidden="true">사번</span></label>
-          <span aria-hidden="true">~</span>
-          <label><span className="visually-hidden">끝 사번</span><input type="number" inputMode="numeric" min="1" max={LATEST_COHORT} placeholder={`예: ${LATEST_COHORT}`} value={draft.cohortMax} onChange={event => set('cohortMax')(event.target.value)} /><span aria-hidden="true">사번</span></label>
-        </div>
-      </fieldset>
     </div>
     <footer className="pod-filter-footer">
       <button type="button" className="pod-filter-reset" onClick={() => setDraft(emptyPodFilters)}>초기화</button>

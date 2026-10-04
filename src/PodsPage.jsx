@@ -1,10 +1,12 @@
-import React, { useCallback, useState } from 'react';
-import { createDemoPods, formatPodDate, readSavedPods } from './data/pods';
+import React, { useCallback, useRef, useState } from 'react';
+import { readDemoPods, formatPodDate, readSavedPods } from './data/pods';
 import PodConfirmation from './PodConfirmation';
-import RandomPodSearch from './RandomPodSearch';
+import PodWaitDialog from './PodWaitDialog';
+import PodCancelFlow from './PodCancelFlow';
+import MessageDialog from './PodMessageDialog';
 import PodFilters from './PodFilters';
-import { emptyPodFilters, filterPods, canJoinPod, pickRandomPod, countPodFilters, formatPodConditions, meetsPodConditions } from './lib/podFilters';
-import { participationKey, readParticipation, joinPod as saveParticipation, cancelParticipation as removeParticipation, useLocalActivity } from './data/localActivity';
+import { emptyPodFilters, filterPods, canJoinPod, pickRandomPod, countPodFilters, findConflicts, mealPeriod } from './lib/podFilters';
+import { participationKey, readParticipation, readUpcomingAppointments, joinPod as saveParticipation, cancelParticipation as removeParticipation, useLocalActivity } from './data/localActivity';
 
 function withParticipation(pods) {
   const joined = readParticipation();
@@ -23,54 +25,67 @@ function PodIcon({ type }) {
 }
 
 export default function PodsPage({ onCreatePod }) {
-  const [demoPods] = useState(createDemoPods);
   useLocalActivity();
-  const pods = [...readSavedPods(), ...demoPods];
+  const pods = [...readSavedPods(), ...readDemoPods()];
   const [confirmedPod, setConfirmedPod] = useState(null);
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState(emptyPodFilters);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [matchingFilters, setMatchingFilters] = useState(null);
+  const [joiningPod, setJoiningPod] = useState(null);
+  const [cancellingPod, setCancellingPod] = useState(null);
+  const [conflict, setConflict] = useState(null);
+  const [foundPod, setFoundPod] = useState(null);
+  const lastRandom = useRef({ filters: null, podId: null });
   const displayedPods = filterPods(withParticipation(pods), filters);
   const availableCount = displayedPods.filter(pod => canJoinPod(pod)).length;
   const filterCount = countPodFilters(filters);
   const hasFilters = filterCount > 0;
   const finishRandom = useCallback(() => {
     // Re-read signups after the animation, including changes from other tabs.
-    const selected = pickRandomPod(withParticipation([...readSavedPods(), ...demoPods]), matchingFilters);
+    // Random matching skips pods that overlap an appointment I already have.
+    const appointments = readUpcomingAppointments();
+    const candidates = withParticipation([...readSavedPods(), ...readDemoPods()]).filter(pod => !findConflicts(pod, appointments).length);
+    // On "다시 찾기", prefer a different pod than the one just shown.
+    const others = candidates.filter(pod => participationKey(pod) !== lastRandom.current.podId);
+    const selected = pickRandomPod(filterPods(others, matchingFilters).some(pod => canJoinPod(pod)) ? others : candidates, matchingFilters);
+    lastRandom.current = { filters: matchingFilters, podId: selected && participationKey(selected) };
     setMatchingFilters(null);
     if (!selected) {
       setError({ id: 'random', message: '조건에 맞는 참여 가능한 팟이 없어요. 필터를 바꿔보세요.' });
       return;
     }
-    try {
-      saveParticipation(selected);
-      setError(null);
-      setConfirmedPod({ ...selected, participants: selected.participants + 1, joined: true });
-    } catch { setError({ id: 'random', message: '참여 내역을 저장하지 못했어요. 다시 시도해주세요.' }); }
-  }, [demoPods, matchingFilters]);
+    setError(null);
+    setFoundPod(selected);
+  }, [matchingFilters]);
 
+  const currentPod = pod => withParticipation([...readSavedPods(), ...readDemoPods()]).find(item => participationKey(item) === participationKey(pod));
   function joinPod(pod) {
-    pod = withParticipation([...readSavedPods(), ...demoPods]).find(item => participationKey(item) === participationKey(pod));
+    pod = currentPod(pod);
     if (!pod) return;
     if (pod.joined) { setConfirmedPod(pod); return; }
     if (!canJoinPod(pod)) {
       setError({ id: pod.id, message: '지금은 참여할 수 없는 팟이에요.' });
       return;
     }
+    setError(null);
+    const [existing] = findConflicts(pod, readUpcomingAppointments());
+    if (existing) { setConflict({ pod, existing }); return; }
+    setJoiningPod(pod);
+  }
+  const finishJoin = useCallback(() => {
+    // Re-check after the wait, in case the pod filled up or changed in another tab.
+    const pod = currentPod(joiningPod);
+    setJoiningPod(null);
+    if (!pod || !canJoinPod(pod)) {
+      setError({ id: joiningPod.id, message: '지금은 참여할 수 없는 팟이에요.' });
+      return;
+    }
     try {
       saveParticipation(pod);
-      setError(null);
       setConfirmedPod({ ...pod, participants: pod.participants + 1, joined: true });
     } catch { setError({ id: pod.id, message: '참여 내역을 저장하지 못했어요. 다시 시도해주세요.' }); }
-  }
-  function cancelParticipation(pod) {
-    if (!pod.joined || pod.isMine) return;
-    try {
-      removeParticipation(pod);
-      setError(null);
-    } catch { setError({ id: pod.id, message: '참여를 취소하지 못했어요. 다시 시도해주세요.' }); }
-  }
+  }, [joiningPod]);
   return <section className="pods-page" aria-labelledby="pods-heading">
     <header className="pods-header">
       <div><h2 id="pods-heading" tabIndex={-1}>팟</h2><p>참여 가능 <span>{availableCount}</span></p></div>
@@ -85,7 +100,7 @@ export default function PodsPage({ onCreatePod }) {
           </button>
           <span role="status">{hasFilters ? `${displayedPods.length}개 팟` : '전체 팟'}</span>
         </div>
-        <button type="button" className="pods-random" disabled={availableCount === 0 || matchingFilters !== null} onClick={() => { setError(null); setMatchingFilters({ ...filters }); }}>
+        <button type="button" className="pods-random" disabled={availableCount === 0 || matchingFilters !== null} onClick={() => { setError(null); lastRandom.current.podId = null; setMatchingFilters({ ...filters }); }}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 7h3c4 0 8 10 12 10h3m-4-4 4 4-4 4M3 17h3c1.5 0 3-1.5 4.5-3.5M14 9c1.5-1.3 2.5-2 4-2h3m-4-4 4 4-4 4"/></svg>
           랜덤 참여하기
         </button>
@@ -98,8 +113,6 @@ export default function PodsPage({ onCreatePod }) {
       {displayedPods.map(pod => {
         const full = pod.capacity !== null && pod.participants >= pod.capacity;
         const ended = new Date(`${pod.date}T${pod.time}`).getTime() <= Date.now();
-        const eligible = meetsPodConditions(pod);
-        const conditions = formatPodConditions(pod);
         return <li key={pod.id} className="pod-card">
         <article aria-labelledby={`pod-name-${pod.id}`}>
           <div className="pod-card-top">
@@ -110,7 +123,7 @@ export default function PodsPage({ onCreatePod }) {
             </div>
           </div>
           <h3 id={`pod-name-${pod.id}`}>{pod.title}</h3>
-          {conditions.length > 0 && <ul className="pod-card-conditions" aria-label="참여 조건">{conditions.map(text => <li key={text}>{text}</li>)}</ul>}
+          {pod.host && <p className="pod-card-host"><span className="pod-card-host-avatar" aria-hidden="true">{pod.host.slice(0, 1)}</span><span className="visually-hidden">모집자 </span>{pod.host}</p>}
           <div className="pod-card-details">
             <div>
               <p className="pod-card-restaurant">{pod.restaurantName}</p>
@@ -121,10 +134,10 @@ export default function PodsPage({ onCreatePod }) {
                 <div className="pod-card-meta"><PodIcon type="place"/><span>{pod.meeting}</span></div>
               </div>
               <div className="pod-card-action">
-                <button type="button" className={`pod-join${pod.joined ? ' is-joined' : ''}`} disabled={pod.isMine || ((full || ended || !eligible) && !pod.joined)} onClick={() => joinPod(pod)}>
-                  {pod.isMine ? '내가 만든 팟' : pod.joined ? '약속 보기' : ended ? '종료' : full ? '모집 완료' : !eligible ? '조건 불일치' : '참여하기'}
+                <button type="button" className={`pod-join${pod.joined ? ' is-joined' : ''}`} disabled={pod.isMine || ((full || ended) && !pod.joined)} onClick={() => joinPod(pod)}>
+                  {pod.isMine ? '내가 만든 팟' : pod.joined ? '약속 보기' : ended ? '종료' : full ? '모집 완료' : '참여하기'}
                 </button>
-                {pod.joined && <button type="button" className="pod-cancel" onClick={() => cancelParticipation(pod)}>취소하기</button>}
+                {pod.joined && <button type="button" className="pod-cancel" onClick={() => { setError(null); setCancellingPod(pod); }}>취소하기</button>}
               </div>
             </div>
             {error?.id === pod.id && <p className="pod-card-error" role="alert">{error.message}</p>}
@@ -133,7 +146,31 @@ export default function PodsPage({ onCreatePod }) {
       </li>; })}
     </ul>
     {filtersOpen && <PodFilters filters={filters} pods={pods} onClose={() => setFiltersOpen(false)} onApply={next => { setFilters(next); setError(null); setFiltersOpen(false); }} />}
-    {matchingFilters !== null && <RandomPodSearch onComplete={finishRandom} onCancel={() => setMatchingFilters(null)} />}
+    {matchingFilters !== null && <PodWaitDialog title="참여 가능한 팟을 찾고 있어요" cancelLabel="그만 찾기" duration={3500} onComplete={finishRandom} onCancel={() => setMatchingFilters(null)} />}
+    {cancellingPod && <PodCancelFlow pod={cancellingPod} onClose={() => setCancellingPod(null)} onConfirm={() => removeParticipation(cancellingPod)} />}
+    {foundPod && <MessageDialog title="이 팟을 찾았어요"
+      actions={[{ label: '돌아가기', onClick: () => setFoundPod(null) },
+        { label: '다시 찾기', onClick: () => { setFoundPod(null); setMatchingFilters({ ...lastRandom.current.filters }); } },
+        { label: '신청하기', primary: true, onClick: () => { setJoiningPod(foundPod); setFoundPod(null); } }]}
+      onDismiss={() => setFoundPod(null)}>
+      <div className="pod-found">
+        <strong>{foundPod.title}</strong>
+        <dl>
+          <div><dt>식당</dt><dd>{foundPod.restaurantName}</dd></div>
+          <div><dt>일시</dt><dd>{formatPodDate(foundPod.date)} · {foundPod.time}</dd></div>
+          <div><dt>만남장소</dt><dd>{foundPod.meeting}</dd></div>
+          <div><dt>인원</dt><dd>{foundPod.capacity === null ? `${foundPod.participants}명 참여 중` : `${foundPod.participants} / ${foundPod.capacity}명`}</dd></div>
+          {foundPod.host && <div><dt>모집자</dt><dd>{foundPod.host}</dd></div>}
+        </dl>
+      </div>
+      <p className="pod-found-question">이 팟에 신청할까요?</p>
+    </MessageDialog>}
+    {conflict && <MessageDialog title={`${formatPodDate(conflict.pod.date)} ${mealPeriod(conflict.pod.time)}에 이미 약속이 있어요`}
+      message={`${conflict.existing.time} ${conflict.existing.restaurantName} · ${conflict.existing.title}\n그래도 이 팟에 신청할까요?`}
+      actions={[{ label: '돌아가기', onClick: () => setConflict(null) },
+        { label: '그래도 신청하기', primary: true, onClick: () => { setJoiningPod(conflict.pod); setConflict(null); } }]}
+      onDismiss={() => setConflict(null)} />}
+    {joiningPod && <PodWaitDialog title="참여 신청하는 중이에요" cancelLabel="신청 취소" duration={2000} onComplete={finishJoin} onCancel={() => setJoiningPod(null)} />}
     {confirmedPod && <PodConfirmation pod={confirmedPod} onClose={() => setConfirmedPod(null)} />}
   </section>;
 }

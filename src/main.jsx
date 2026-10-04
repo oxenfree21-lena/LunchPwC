@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import NaverMap from './NaverMap';
 import RestaurantSheet, { INITIAL_SHEET_HEIGHT } from './RestaurantSheet';
@@ -8,7 +8,8 @@ import PodsPage from './PodsPage';
 import MyPage from './MyPage';
 import ExploreSearch from './ExploreSearch';
 import { restaurants } from './data/restaurants';
-import { readFavorites, toggleFavorite, useLocalActivity } from './data/localActivity';
+import { restaurantDetails } from './data/restaurantDetails';
+import { readFavorites, toggleFavorite, useLocalActivity, withMyReviews } from './data/localActivity';
 import './styles.css';
 
 const tabs = [
@@ -51,9 +52,11 @@ function ProfileIcon({ selected }) {
   );
 }
 
-function ExploreView({ onCreatePod, initialPlace = null }) {
+function ExploreView({ places, onCreatePod, initialPlace = null }) {
   const [sheetHeight, setSheetHeight] = useState(INITIAL_SHEET_HEIGHT);
   const [selectedPlace, setSelectedPlace] = useState(initialPlace);
+  const [tag, setTag] = useState('');
+  const taggedPlaces = useMemo(() => tag ? places.filter(place => restaurantDetails[place.id]?.tags?.includes(tag)) : places, [places, tag]);
   useLocalActivity();
   const favorites = readFavorites();
   const previousFocus = useRef(null);
@@ -67,10 +70,10 @@ function ExploreView({ onCreatePod, initialPlace = null }) {
   }
   return (
     <div className={`explore-view${selectedPlace ? ' has-detail' : ''}`} style={{ '--sheet-height': `${sheetHeight}px` }}>
-      <NaverMap places={restaurants} onSelect={selectPlace} />
+      <NaverMap places={taggedPlaces} boundsPlaces={places} onSelect={selectPlace} />
       <div className="explore-list-view" inert={Boolean(selectedPlace)}>
-        <ExploreSearch places={restaurants} onSelect={selectPlace} suspended={Boolean(selectedPlace)} />
-        <RestaurantSheet onHeightChange={setSheetHeight} places={restaurants} onSelect={selectPlace} />
+        <ExploreSearch places={places} onSelect={selectPlace} suspended={Boolean(selectedPlace)} />
+        <RestaurantSheet onHeightChange={setSheetHeight} places={taggedPlaces} tag={tag} onTagChange={setTag} onSelect={selectPlace} />
       </div>
       {selectedPlace && <RestaurantDetail key={selectedPlace.id} place={selectedPlace} onBack={closeDetail}
         onCreatePod={onCreatePod}
@@ -85,8 +88,14 @@ function App() {
   const [podsVersion, setPodsVersion] = useState(0);
   const [detailEntry, setDetailEntry] = useState(null);
   const podTrigger = useRef(null);
+  const podDirty = useRef(false);
+  const trackPodDirty = useCallback(dirty => { podDirty.current = dirty; }, []);
+  const activity = useLocalActivity();
+  // Ratings and review counts include reviews written in this browser.
+  const places = useMemo(() => restaurants.map(withMyReviews), [activity]);
   function openCreatePod(place = null) {
     podTrigger.current = document.activeElement;
+    podDirty.current = false;
     setPodEntry({ place });
   }
   function closeCreatePod() {
@@ -104,11 +113,11 @@ function App() {
     <div className="app-shell">
       <main inert={Boolean(podEntry)} className={`placeholder${activeTab === 'explore' ? ' explore-screen' : activeTab === 'mates' ? ' mates-screen' : ' my-screen'}`} id="main-content" aria-labelledby="page-title">
         <h1 id="page-title" className="visually-hidden" aria-live="polite">{currentTab.label}</h1>
-        {activeTab === 'explore' && <ExploreView onCreatePod={openCreatePod} initialPlace={detailEntry} />}
+        {activeTab === 'explore' && <ExploreView places={places} onCreatePod={openCreatePod} initialPlace={detailEntry} />}
         {activeTab === 'mates' && <PodsPage key={podsVersion} onCreatePod={() => openCreatePod()} />}
         {activeTab === 'more' && <MyPage onSelectRestaurant={place => { setDetailEntry(place); setActiveTab('explore'); }} />}
       </main>
-      {podEntry && <CreatePod initialPlace={podEntry.place} places={restaurants} onClose={closeCreatePod} onCreated={() => setPodsVersion(value => value + 1)} onComplete={completeCreatePod} />}
+      {podEntry && <CreatePod initialPlace={podEntry.place} places={places} onClose={closeCreatePod} onCreated={() => setPodsVersion(value => value + 1)} onComplete={completeCreatePod} onDirtyChange={trackPodDirty} />}
       <nav className="navigation" aria-label="주 메뉴">
         {tabs.map(({ id, label, icon: Icon }) => {
           const selected = activeTab === id;
@@ -118,7 +127,10 @@ function App() {
               className={`nav-item${selected ? ' is-selected' : ''}`}
               type="button"
               aria-current={selected ? 'page' : undefined}
-              onClick={() => { setPodEntry(null); setDetailEntry(null); setActiveTab(id); }}
+              onClick={() => {
+                if (podEntry && podDirty.current && !window.confirm('작성 중인 팟 내용이 사라져요. 이동할까요?')) return;
+                setPodEntry(null); setDetailEntry(null); setActiveTab(id);
+              }}
             >
               <Icon selected={selected} />
               <span>{label}</span>

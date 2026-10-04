@@ -1,7 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-
-const tags = ['빠른 식사', '단체 식사', '혼밥', '가성비', '웨이팅 필수', '조용한', '분위기 좋은'];
+import PodWaitDialog from './PodWaitDialog';
+import { situationTags as tags } from './data/restaurantDetails';
 
 export default function ReviewSheet({ name, onClose, onSubmit }) {
   const dialog = useRef(null);
@@ -10,6 +10,16 @@ export default function ReviewSheet({ name, onClose, onSubmit }) {
   const [selectedTags, setSelectedTags] = useState([]);
   const [text, setText] = useState('');
   const [error, setError] = useState('');
+  const [pending, setPending] = useState(null);
+  // Keep the wait timer steady even if the parent passes a new callback while waiting.
+  const submit = useRef(onSubmit);
+  submit.current = onSubmit;
+  const finishSubmit = useCallback(() => {
+    const review = pending;
+    setPending(null);
+    try { submit.current(review); }
+    catch { setError('저장하지 못했어요. 다시 시도해주세요.'); }
+  }, [pending]);
 
   useEffect(() => {
     const element = dialog.current;
@@ -35,8 +45,8 @@ export default function ReviewSheet({ name, onClose, onSubmit }) {
     <form className="review-sheet-form" onSubmit={event => {
       event.preventDefault();
       if (!menu.trim() || !text.trim() || !rating) return;
-      try { onSubmit({ menu: menu.trim(), rating, tags: selectedTags, review: text.trim() }); }
-      catch { setError('저장하지 못했어요. 다시 시도해주세요.'); }
+      setError('');
+      setPending({ menu: menu.trim(), rating, tags: selectedTags, review: text.trim() });
     }}>
       <header className="review-sheet-header">
         <div><p>{name}</p><h2 id="review-sheet-title">리뷰 쓰기</h2></div>
@@ -76,8 +86,9 @@ export default function ReviewSheet({ name, onClose, onSubmit }) {
       </div>
       <footer className="review-sheet-footer">
         <p role={error ? 'alert' : undefined}>{error || '작성한 리뷰는 이 기기에만 저장돼요.'}</p>
-        <button type="submit" disabled={!menu.trim() || !rating || !text.trim()}>등록하기</button>
+        <button type="submit" disabled={!menu.trim() || !rating || !text.trim() || pending !== null}>등록하기</button>
       </footer>
     </form>
+    {pending && <PodWaitDialog title="리뷰를 등록하는 중이에요" cancelLabel="등록 취소" duration={2000} onComplete={finishSubmit} onCancel={() => setPending(null)} />}
   </dialog>, document.body);
 }

@@ -21,7 +21,8 @@ function minimumZoom(width, height) {
   return Math.min(MAX_ZOOM, Math.max(15, Math.ceil(Math.log2(metersPerPixelAtZoomZero * Math.max(width, height) / 1800))));
 }
 
-export default function NaverMap({ places = EMPTY_PLACES, onSelect }) {
+// `boundsPlaces` fixes the map area so filtering markers does not rebuild the map.
+export default function NaverMap({ places = EMPTY_PLACES, boundsPlaces = places, onSelect }) {
   const container = useRef(null);
   const mapRef = useRef(null);
   const [status, setStatus] = useState('loading');
@@ -30,12 +31,12 @@ export default function NaverMap({ places = EMPTY_PLACES, onSelect }) {
   const [minZoom, setMinZoom] = useState(16);
   const [showControls, setShowControls] = useState(true);
   const clientId = import.meta.env.VITE_NAVER_MAP_CLIENT_ID?.trim();
-  const area = useMemo(() => places.reduce((bounds, place) => ({
+  const area = useMemo(() => boundsPlaces.reduce((bounds, place) => ({
     south: Math.min(bounds.south, place.lat - LAT_RADIUS * .25),
     north: Math.max(bounds.north, place.lat + LAT_RADIUS * .25),
     west: Math.min(bounds.west, place.lng - LNG_RADIUS * .25),
     east: Math.max(bounds.east, place.lng + LNG_RADIUS * .25),
-  }), { ...AREA }), [places]);
+  }), { ...AREA }), [boundsPlaces]);
 
   useEffect(() => {
     if (!clientId) { setStatus('missing-key'); return; }

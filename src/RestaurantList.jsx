@@ -1,7 +1,12 @@
 import React from 'react';
+import { restaurantPhotos } from './data/restaurantPhotos';
 import { restaurantDetails, distanceOrigin, distanceInMeters, formatDistance, formatPrice } from './data/restaurantDetails';
 
-export function PhotoSlots({ name }) {
+export function PhotoSlots({ id, name }) {
+  const photos = restaurantPhotos(id);
+  if (photos.length) return <div className="restaurant-photos">
+    {photos.map((src, index) => <img className="restaurant-photo" key={src} src={src} alt={`${name} 사진 ${index + 1}`} loading="lazy" decoding="async" />)}
+  </div>;
   return (
     <div className="restaurant-photos" role="img" aria-label={`${name} 사진 준비 중, 사진 3장 자리`}>
       {[0, 1, 2].map(index => <div className="restaurant-photo-slot" key={index} aria-hidden="true">
@@ -31,9 +36,9 @@ export default function RestaurantList({ places, onSelect }) {
                 <span className="restaurant-category">{details.category ?? '종류 확인 중'}</span>
                 <span className="restaurant-distance" aria-label={`${distanceOrigin.label}에서 직선거리 ${formatDistance(place.distance)}`}>{formatDistance(place.distance)}</span>
               </div>
-              <span className="restaurant-list-price" title={details.priceBasis || undefined} aria-label={`${details.priceBasis ? `${details.priceBasis} 기준 ` : ''}${formatPrice(details)}`}>{formatPrice(details)}</span>
+              <span className="restaurant-list-price" aria-label={`가격대 ${formatPrice(details)}`}>{formatPrice(details)}</span>
             </div>
-            <PhotoSlots name={place.name} />
+            <PhotoSlots id={place.id} name={place.name} />
           </article>
         </li>;
       })}
