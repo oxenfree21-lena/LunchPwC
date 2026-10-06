@@ -109,7 +109,7 @@ export function readUpcomingAppointments(now = new Date()) {
     const original = demos.find(pod => pod.id === match[1]);
     return original ? [{ ...original, date: match[2], time: match[3], participants: original.participants + 1, joined: true }] : [];
   });
-  const myDemos = readDemoPods().filter(pod => pod.isMine);
+  const myDemos = readDemoPods(now).filter(pod => pod.isMine);
   // Drop signups to demo pods that now count as mine, even after I cancel them.
   const myDemoIds = new Set(demos.filter(pod => pod.isMine).map(pod => pod.id));
   return [...readSavedPods(), ...myDemos, ...joined.filter(pod => !myDemoIds.has(pod.id))]

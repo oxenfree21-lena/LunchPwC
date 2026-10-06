@@ -37,6 +37,10 @@ npm run dev
 
 저장·취소·기존 데이터 호환 검증: `node --test src/data/localActivity.test.js`.
 
+## 팟
+
+예시 팟 10개는 `src/data/pods.js`에 있습니다. 날짜는 접속한 날 기준으로 계산합니다(다음 평일 3일에 나누고, P07은 제목에 맞춰 목요일). 그래서 배포 링크를 언제 열어도 모집 중인 팟이 보입니다. 참여는 약속 30분 전에 마감됩니다(`JOIN_CLOSES_MINUTES`). 팟 만들기의 날짜(오늘~모레), 시간, 인원, 만남장소 선택지는 `src/data/podOptions.js`에서 바꿉니다.
+
 ## 식당 데이터
 
 `src/data/restaurants.csv`가 원본입니다. UTF-8 CSV로 저장하며, 수정하면 지도에도 반영됩니다(배포 사이트는 재빌드 필요).
@@ -49,7 +53,7 @@ npm run dev
 
 CSV의 `id`를 기준으로 아래 가상 데이터를 연결합니다.
 
-- `src/data/restaurantDetails.js`: 카테고리, 주소, 영업시간, 상황 태그(태그는 아직 화면에 표시하지 않음)
+- `src/data/restaurantDetails.js`: 카테고리, 주소, 영업시간, 상황 태그(지도 탭 목록의 태그 필터와 리뷰 쓰기 태그에 사용)
 - `src/data/restaurantMenus.js`: 식당별 메뉴 4개와 가격, 대표 메뉴. 목록·정보 탭의 가격대는 이 메뉴 가격의 최저~최고입니다.
 - `src/data/restaurantReviews.js`: 식당별 예시 리뷰 4개(0.5점 단위). 상세 페이지는 내 리뷰를 맨 위에 두고 최대 4개만 보여주며, 리뷰 수는 `reviewCount` + 내 리뷰 수입니다. ‘리뷰 더보기’ 버튼은 자리만 있고 동작하지 않습니다.
 

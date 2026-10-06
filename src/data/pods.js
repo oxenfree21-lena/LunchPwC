@@ -7,20 +7,29 @@ function dateValue(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
-// Demo pods from the planning sheet (2026-10-04), moved to weekdays 10/15, 10/16 and 10/19
-// in the original order (P07 on Thursday 10/22 to match its title). Headcounts include the host. Deadlines are stored only.
-export function createDemoPods() {
+// Demo pods from the planning sheet (2026-10-04). Dates follow the visit date so the list
+// never runs out: groups A/B/C are the next three weekdays after today, and P07 lands on the
+// first Thursday from A to match its title. Headcounts include the host.
+export function createDemoPods(today = new Date()) {
+  const weekdays = [];
+  for (const day = new Date(today); weekdays.length < 3;) {
+    day.setDate(day.getDate() + 1);
+    if (day.getDay() !== 0 && day.getDay() !== 6) weekdays.push(new Date(day));
+  }
+  const thursday = new Date(weekdays[0]);
+  while (thursday.getDay() !== 4) thursday.setDate(thursday.getDate() + 1);
+  const days = { A: dateValue(weekdays[0]), B: dateValue(weekdays[1]), C: dateValue(weekdays[2]), THU: dateValue(thursday) };
   const rows = [
-    ['P01', 1, '점심', '양식', '🍝', '15', '쌤쌤썸', '2026-10-15', '12:00', '11:30', 'AP 1층 2코어', 1, 4, '뇨끼 먹고 오후 버틸 사람 구함', '처음 보는 분도 환영, 업무 얘기는 금지', '파스타먹는날'],
-    ['P02', 3, '점심', '한식', '🍲', '9', '백솥', '2026-10-15', '11:50', '11:20', 'AP 1층 1코어', 2, 4, '국밥 한 그릇에 말 없이 힐링하실 분', '말을 많이 안 해도 괜찮아요', '따뜻한국물'],
-    ['P03', 4, '점심', '한식', '🍲', '10', '제주정', '2026-10-16', '12:10', '11:40', 'AP 1층 2코어', 1, 3, '혼밥 탈출 프로젝트: 고기국수 편', '낯가려도 괜찮아요. 국수가 빨리 나와요', '면치기장인'],
-    ['P04', 8, '점심', '양식', '🍝', '15', '쌤쌤썸', '2026-10-16', '11:40', '11:10', 'AP 1층 2코어', 3, 6, '입사 n일차? 회사 근처 맛집 투어 1탄', '회사 근처 맛집, 먼저 와 본 동료가 알려 드려요', '용리단길산책러'],
-    ['P05', 7, '점심', '양식', '🍝', '16', '심퍼티카스', '2026-10-19', '12:00', '11:30', 'AP 1층 3코어', 4, 6, '엘리베이터에서만 보던 사이 졸업해요', '오픈 시간에 맞춰 가서 대기 없이 앉아요', '점심탐험가'],
-    ['P06', 11, '점심', '고기구이', '🥩', '5', '정직한우', '2026-10-19', '12:00', '11:30', '식당 앞', 5, 8, '마지막 점심은 한우로 배웅해요', '룸이 있어서 여럿이 앉기 좋아요', '고기굽는곰'],
-    ['P07', 2, '저녁', '고기구이', '🥩', '1', '뼈불집', '2026-10-22', '19:00', '18:30', 'AP 1층 2코어', 3, 6, '목요일은 사실상 금요일, 삼겹살 콜?', '1/N 정산, 1인 3~4만 원 예상', '고기굽는곰'],
-    ['P08', 5, '저녁', '중식', '🥟', '12', '중화객잔 담', '2026-10-15', '18:30', '18:00', 'AP 1층 1코어', 3, 5, '야근 전 탄수화물 충전 원정대', '빨리 나와서 1시간 안에 돌아와요', '부먹찍먹'],
-    ['P09', 9, '저녁', '일식', '🍣', '20', '핫피엔딩', '2026-10-16', '19:00', '18:30', 'AP 1층 2코어', 5, 8, '바쁜 시기 끝! 해피엔딩은 여기서', '오랜만에 다 같이 얼굴 봐요', '초밥한판'],
-    ['P10', 10, '저녁', '양식', '🍝', '19', '타파코코', '2026-10-19', '20:30', '20:00', '식당 앞', 2, 4, '조용히 타파스 먹으며 하루 마감', '3~4명이 딱 좋아요', '파스타먹는날'],
+    ['P01', 1, '점심', '양식', '🍝', '15', '쌤쌤썸', days.A, '12:00', '11:30', '회사 1층 2코어', 1, 4, '뇨끼 먹고 오후 버틸 사람 구함', '처음 보는 분도 환영, 업무 얘기는 금지', '파스타먹는날'],
+    ['P02', 3, '점심', '한식', '🍲', '9', '백솥', days.A, '11:50', '11:20', '회사 1층 2코어', 2, 4, '국밥 한 그릇에 말 없이 힐링하실 분', '말을 많이 안 해도 괜찮아요', '따뜻한국물'],
+    ['P03', 4, '점심', '한식', '🍲', '10', '제주정', days.B, '12:10', '11:40', '회사 1층 2코어', 1, 3, '혼밥 탈출 프로젝트: 고기국수 편', '낯가려도 괜찮아요. 국수가 빨리 나와요', '면치기장인'],
+    ['P04', 8, '점심', '양식', '🍝', '15', '쌤쌤썸', days.B, '11:40', '11:10', '회사 1층 2코어', 3, 6, '입사 n일차? 회사 근처 맛집 투어 1탄', '회사 근처 맛집, 먼저 와 본 동료가 알려 드려요', '용리단길산책러'],
+    ['P05', 7, '점심', '양식', '🍝', '16', '심퍼티카스', days.C, '12:00', '11:30', '회사 1층 2코어', 4, 6, '엘리베이터에서만 보던 사이 졸업해요', '오픈 시간에 맞춰 가서 대기 없이 앉아요', '점심탐험가'],
+    ['P06', 11, '점심', '고기구이', '🥩', '5', '정직한우', days.C, '12:00', '11:30', '식당 앞', 5, 8, '마지막 점심은 한우로 배웅해요', '룸이 있어서 여럿이 앉기 좋아요', '고기굽는곰'],
+    ['P07', 2, '저녁', '고기구이', '🥩', '1', '뼈불집', days.THU, '19:00', '18:30', '회사 1층 2코어', 3, 6, '목요일은 사실상 금요일, 삼겹살 콜?', '1/N 정산, 1인 3~4만 원 예상', '고기굽는곰'],
+    ['P08', 5, '저녁', '중식', '🥟', '12', '중화객잔 담', days.A, '18:30', '18:00', '회사 1층 2코어', 3, 5, '야근 전 탄수화물 충전 원정대', '빨리 나와서 1시간 안에 돌아와요', '부먹찍먹'],
+    ['P09', 9, '저녁', '일식', '🍣', '20', '핫피엔딩', days.B, '19:00', '18:30', '회사 1층 2코어', 5, 8, '바쁜 시기 끝! 해피엔딩은 여기서', '오랜만에 다 같이 얼굴 봐요', '초밥한판'],
+    ['P10', 10, '저녁', '양식', '🍝', '19', '타파코코', days.C, '20:30', '20:00', '식당 앞', 2, 4, '조용히 타파스 먹으며 하루 마감', '3~4명이 딱 좋아요', '파스타먹는날'],
   ];
   return rows.map(([id, sourceVersion, mealTime, category, icon, restaurantId, restaurantName, date, time, deadline, meeting, participants, capacity, title, note, host]) => ({
     id, sourceVersion, mealTime, category, icon, title: `${icon} ${title}`, date, time, deadline, restaurantId, restaurantName,
@@ -31,13 +40,13 @@ export function createDemoPods() {
 }
 
 // Demo pods minus the ones I hosted and canceled in this browser.
-export function readDemoPods() {
+export function readDemoPods(now = new Date()) {
   let cancelled = [];
   try {
     const value = JSON.parse(localStorage.getItem(CANCELLED_DEMO_PODS_KEY) || '[]');
     if (Array.isArray(value)) cancelled = value;
   } catch { /* Ignore broken storage and show every demo pod. */ }
-  return createDemoPods().filter(pod => !(pod.isMine && cancelled.includes(pod.id)));
+  return createDemoPods(now).filter(pod => !(pod.isMine && cancelled.includes(pod.id)));
 }
 
 export function readSavedPods() {

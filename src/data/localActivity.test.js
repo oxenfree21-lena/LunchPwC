@@ -107,3 +107,13 @@ test('demo pods hosted under my nickname are mine, listed in my appointments, an
   cancelCreatedPod(mine);
   assert.equal(readUpcomingAppointments(now).length, 0);
 });
+
+test('demo pods follow the visit date: next three weekdays, P07 on a Thursday', () => {
+  for (const today of ['2026-10-06T09:00', '2026-10-09T15:00', '2026-10-29T12:00']) {
+    const pods = createDemoPods(new Date(today));
+    const days = [...new Set(pods.filter(pod => pod.id !== 'P07').map(pod => pod.date))].sort();
+    assert.equal(days.length, 3);
+    assert.ok(days.every(day => day > today.slice(0, 10) && ![0, 6].includes(new Date(`${day}T12:00`).getDay())));
+    assert.equal(new Date(`${pods.find(pod => pod.id === 'P07').date}T12:00`).getDay(), 4);
+  }
+});

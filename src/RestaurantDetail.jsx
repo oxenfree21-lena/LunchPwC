@@ -110,7 +110,7 @@ export default function RestaurantDetail({ place: selectedPlace, onBack, favorit
         <p className="detail-disclaimer">{demoDisclaimer}</p>
       </div>
     </div>
-    {writing && <ReviewSheet name={place.name} onClose={() => setWriting(false)} onSubmit={review => {
+    {writing && <ReviewSheet name={place.name} menus={details.menus} onClose={() => setWriting(false)} onSubmit={review => {
       saveReview(place.id, review);
       setActiveTab('리뷰');
       setWriting(false);

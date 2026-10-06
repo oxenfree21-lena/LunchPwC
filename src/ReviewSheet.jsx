@@ -3,9 +3,15 @@ import { createPortal } from 'react-dom';
 import PodWaitDialog from './PodWaitDialog';
 import { situationTags as tags } from './data/restaurantDetails';
 
-export default function ReviewSheet({ name, onClose, onSubmit }) {
+const TIP_MAX = 40;
+
+// Planning: pick what you ate from the menu and leave a one-line tip.
+export default function ReviewSheet({ name, menus = [], onClose, onSubmit }) {
   const dialog = useRef(null);
-  const [menu, setMenu] = useState('');
+  const [selectedMenus, setSelectedMenus] = useState([]);
+  const [typedMenu, setTypedMenu] = useState('');
+  // Restaurants without menu data fall back to typing the menu.
+  const menu = menus.length ? selectedMenus.join(' · ') : typedMenu.trim();
   const [rating, setRating] = useState(0);
   const [selectedTags, setSelectedTags] = useState([]);
   const [text, setText] = useState('');
@@ -44,9 +50,9 @@ export default function ReviewSheet({ name, onClose, onSubmit }) {
     }}>
     <form className="review-sheet-form" onSubmit={event => {
       event.preventDefault();
-      if (!menu.trim() || !text.trim() || !rating) return;
+      if (!menu || !text.trim() || !rating) return;
       setError('');
-      setPending({ menu: menu.trim(), rating, tags: selectedTags, review: text.trim() });
+      setPending({ menu, rating, tags: selectedTags, review: text.trim() });
     }}>
       <header className="review-sheet-header">
         <div><p>{name}</p><h2 id="review-sheet-title">리뷰 쓰기</h2></div>
@@ -55,10 +61,18 @@ export default function ReviewSheet({ name, onClose, onSubmit }) {
         </button>
       </header>
       <div className="review-sheet-body">
-        <div className="review-field">
+        {menus.length ? <fieldset className="review-field">
+          <legend>먹은 메뉴 <span>여러 개 선택</span></legend>
+          <div className="review-tag-options">
+            {menus.map(({ name: item }) => <label key={item} className={selectedMenus.includes(item) ? 'is-selected' : ''}>
+              <input type="checkbox" checked={selectedMenus.includes(item)} onChange={() => setSelectedMenus(previous => previous.includes(item) ? previous.filter(value => value !== item) : [...previous, item])} />
+              <span>{item}</span>
+            </label>)}
+          </div>
+        </fieldset> : <div className="review-field">
           <label htmlFor="review-menu">먹은 메뉴</label>
-          <input id="review-menu" placeholder="예: 고기국수, 수육" value={menu} onChange={event => setMenu(event.target.value)} maxLength={100} required />
-        </div>
+          <input id="review-menu" placeholder="예: 고기국수, 수육" value={typedMenu} onChange={event => setTypedMenu(event.target.value)} maxLength={100} required />
+        </div>}
         <fieldset className="review-field review-rating-field">
           <legend>별점</legend>
           <div className="review-rating-options">
@@ -79,14 +93,14 @@ export default function ReviewSheet({ name, onClose, onSubmit }) {
           </div>
         </fieldset>
         <div className="review-field">
-          <label htmlFor="review-text">리뷰</label>
-          <textarea id="review-text" placeholder="음식과 분위기는 어땠나요?" value={text} onChange={event => setText(event.target.value)} rows={4} maxLength={1000} required />
-          <span className="review-character-count">{text.length} / 1,000</span>
+          <label htmlFor="review-text">한 줄 팁</label>
+          <input id="review-text" type="text" placeholder="예: 11시 40분 전에 가면 바로 앉아요" value={text} onChange={event => setText(event.target.value)} maxLength={TIP_MAX} required />
+          <span className="review-character-count">{text.length} / {TIP_MAX}</span>
         </div>
       </div>
       <footer className="review-sheet-footer">
         <p role={error ? 'alert' : undefined}>{error || '작성한 리뷰는 이 기기에만 저장돼요.'}</p>
-        <button type="submit" disabled={!menu.trim() || !rating || !text.trim() || pending !== null}>등록하기</button>
+        <button type="submit" disabled={!menu || !rating || !text.trim() || pending !== null}>등록하기</button>
       </footer>
     </form>
     {pending && <PodWaitDialog title="리뷰를 등록하는 중이에요" cancelLabel="등록 취소" duration={2000} onComplete={finishSubmit} onCancel={() => setPending(null)} />}

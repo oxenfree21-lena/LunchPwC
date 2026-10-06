@@ -20,4 +20,6 @@ export const meetingPlaces = ['회사 1층 2코어', '회사 17층(S-Bridge)', '
 export const CUSTOM_MEETING = '직접 입력';
 export const MEETING_MAX = 30;
 export const POD_NOTE_MAX = 30;
+// Planning: a pod can be set for today up to two days ahead.
+export const podDayLabels = ['오늘', '내일', '모레'];
 export const POD_RULE = '2명 이상 모이면 약속 30분 전에 확정돼요';

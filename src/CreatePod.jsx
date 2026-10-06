@@ -2,10 +2,18 @@ import React, { useEffect, useRef, useState } from 'react';
 import { restaurantDetails } from './data/restaurantDetails';
 import { PODS_STORAGE_KEY } from './data/pods';
 import { myProfile } from './data/profile';
-import { CUSTOM_MEETING, MEETING_MAX, meetingPlaces, podCapacityOptions, podTimeGroups, POD_NOTE_MAX, POD_RULE } from './data/podOptions';
+import { CUSTOM_MEETING, MEETING_MAX, meetingPlaces, podCapacityOptions, podDayLabels, podTimeGroups, POD_NOTE_MAX, POD_RULE } from './data/podOptions';
 
 function dateValue(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function podDates() {
+  return podDayLabels.map((label, offset) => {
+    const day = new Date();
+    day.setDate(day.getDate() + offset);
+    return [dateValue(day), label, `${day.getMonth() + 1}.${day.getDate()} (${'일월화수목금토'[day.getDay()]})`];
+  });
 }
 
 function nextLunchDate() {
@@ -46,7 +54,7 @@ export default function CreatePod({ initialPlace, places, onClose, onCreated, on
 
   function goTo(next) { setError(''); setStep(next); }
   function validSchedule() {
-    return date && podTimeGroups.some(([, options]) => options.includes(time))
+    return podDates().some(([value]) => value === date) && podTimeGroups.some(([, options]) => options.includes(time))
       && new Date(`${date}T${time}`).getTime() > Date.now() && podCapacityOptions.includes(capacity);
   }
   function advance(event) {
@@ -108,7 +116,11 @@ export default function CreatePod({ initialPlace, places, onClose, onCreated, on
           </>}
           {!created && step === 1 && <div className="pod-fields">
             <label htmlFor="pod-post-title">제목<input id="pod-post-title" type="text" value={podTitle} placeholder="예: 오늘 점심 같이 드실 분!" maxLength={80} required onChange={event => setPodTitle(event.target.value)} /></label>
-            <label htmlFor="pod-date">날짜<input id="pod-date" type="date" value={date} min={dateValue(new Date())} required onChange={event => setDate(event.target.value)} /></label>
+            <fieldset className="pod-choice-group"><legend>날짜</legend>
+              <div className="pod-choices pod-date-choices">
+                {podDates().map(([value, label, detail]) => <label key={value}><input type="radio" name="pod-date" value={value} checked={date === value} onChange={() => setDate(value)} /><span>{label}<small>{detail}</small></span></label>)}
+              </div>
+            </fieldset>
             <fieldset className="pod-choice-group"><legend>시간</legend>
               {podTimeGroups.map(([label, options]) => <div key={label} className="pod-time-group">
                 <span className="pod-time-label">{label}</span>

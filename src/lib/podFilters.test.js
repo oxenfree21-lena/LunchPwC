@@ -19,11 +19,15 @@ test('filters combine food, exact date, time and maximum headcount', () => {
   assert.deepEqual(filterPods(pods, { capacity: 'medium' }), [pods[1]]);
 });
 
-test('time slots include the start, exclude the end, and cross midnight', () => {
-  const timed = ['05:59', '06:00', '10:59', '11:00', '14:59', '15:00', '17:00', '20:59', '21:00'].map(time => ({ ...base, time }));
-  assert.deepEqual(filterPods(timed, { time: 'lunch' }).map(p => p.time), ['11:00', '14:59']);
-  assert.deepEqual(filterPods(timed, { time: 'night' }).map(p => p.time), ['05:59', '21:00']);
-  assert.deepEqual(filterPods(timed, { time: 'dinner' }).map(p => p.time), ['17:00', '20:59']);
+test('time filter splits lunch and dinner at 16:00', () => {
+  const timed = ['11:00', '13:00', '15:59', '16:00', '17:30', '21:00'].map(time => ({ ...base, time }));
+  assert.deepEqual(filterPods(timed, { time: 'lunch' }).map(p => p.time), ['11:00', '13:00', '15:59']);
+  assert.deepEqual(filterPods(timed, { time: 'dinner' }).map(p => p.time), ['16:00', '17:30', '21:00']);
+});
+
+test('signups close 30 minutes before the meal', () => {
+  assert.equal(canJoinPod(base, new Date('2026-10-03T11:29')), true);
+  assert.equal(canJoinPod(base, new Date('2026-10-03T11:30')), false);
 });
 
 test('random picks only filtered eligible pods, never owned/joined/full/past/canceled', () => {

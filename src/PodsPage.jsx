@@ -5,7 +5,7 @@ import PodWaitDialog from './PodWaitDialog';
 import PodCancelFlow from './PodCancelFlow';
 import MessageDialog from './PodMessageDialog';
 import PodFilters from './PodFilters';
-import { emptyPodFilters, filterPods, canJoinPod, pickRandomPod, countPodFilters, findConflicts, mealPeriod } from './lib/podFilters';
+import { emptyPodFilters, filterPods, canJoinPod, pickRandomPod, countPodFilters, findConflicts, mealPeriod, joinClosesAt } from './lib/podFilters';
 import { participationKey, readParticipation, readUpcomingAppointments, joinPod as saveParticipation, cancelParticipation as removeParticipation, useLocalActivity } from './data/localActivity';
 
 function withParticipation(pods) {
@@ -113,10 +113,11 @@ export default function PodsPage({ onCreatePod }) {
       {displayedPods.map(pod => {
         const full = pod.capacity !== null && pod.participants >= pod.capacity;
         const ended = new Date(`${pod.date}T${pod.time}`).getTime() <= Date.now();
+        const closed = ended || joinClosesAt(pod) <= Date.now();
         return <li key={pod.id} className="pod-card">
         <article aria-labelledby={`pod-name-${pod.id}`}>
           <div className="pod-card-top">
-            <span className={`pod-card-status${full || ended ? ' is-full' : ''}`}>{ended ? '종료' : full ? '모집 완료' : '모집 중'}</span>{pod.isMine && <span className="pod-card-mine">내 팟</span>}
+            <span className={`pod-card-status${full || closed ? ' is-full' : ''}`}>{ended ? '종료' : closed ? '모집 마감' : full ? '모집 완료' : '모집 중'}</span>{pod.isMine && <span className="pod-card-mine">내 팟</span>}
             <div className="pod-card-members"><PodIcon type="people"/>
               {pod.capacity === null ? <span><strong>{pod.participants}명</strong> · 인원 제한 없음</span>
                 : <span><strong>{pod.participants}</strong> / {pod.capacity}명</span>}
@@ -134,8 +135,8 @@ export default function PodsPage({ onCreatePod }) {
                 <div className="pod-card-meta"><PodIcon type="place"/><span>{pod.meeting}</span></div>
               </div>
               <div className="pod-card-action">
-                <button type="button" className={`pod-join${pod.joined ? ' is-joined' : ''}`} disabled={pod.isMine || ((full || ended) && !pod.joined)} onClick={() => joinPod(pod)}>
-                  {pod.isMine ? '내가 만든 팟' : pod.joined ? '약속 보기' : ended ? '종료' : full ? '모집 완료' : '참여하기'}
+                <button type="button" className={`pod-join${pod.joined ? ' is-joined' : ''}`} disabled={pod.isMine || ((full || closed) && !pod.joined)} onClick={() => joinPod(pod)}>
+                  {pod.isMine ? '내가 만든 팟' : pod.joined ? '약속 보기' : ended ? '종료' : closed ? '모집 마감' : full ? '모집 완료' : '참여하기'}
                 </button>
                 {pod.joined && <button type="button" className="pod-cancel" onClick={() => { setError(null); setCancellingPod(pod); }}>취소하기</button>}
               </div>

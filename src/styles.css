@@ -681,3 +681,7 @@ button { font: inherit; -webkit-tap-highlight-color: transparent; }
 .pod-confirm-notice { margin: -2px 0 6px; color: var(--color-primary); font-size: 14px; font-weight: 600; word-break: keep-all; }
 .pod-rule { margin: -8px 0 20px; color: var(--color-primary); font-size: 14px; font-weight: 600; word-break: keep-all; }
 .restaurant-list-disclaimer { margin: 8px 20px 20px; }
+.pod-date-choices { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.pod-date-choices span { min-height: 56px; gap: 2px; align-content: center; }
+.pod-date-choices small { color: #8b95a1; font-size: 11px; font-weight: 400; }
+.pod-choices input:checked + span small { color: inherit; }
