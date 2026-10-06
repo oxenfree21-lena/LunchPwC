@@ -98,8 +98,6 @@ export default function RestaurantDetail({ place: selectedPlace, onBack, favorit
             {review.tags?.length > 0 && <div className="review-selected-tags">{review.tags.map(tag => <span key={tag}>{tag}</span>)}</div>}
           </article>
         )}
-        {/* Placeholder until the full review list exists; intentionally does nothing. */}
-        {activeTab === '리뷰' && reviewCount > reviews.length && <button type="button" className="detail-more-reviews">리뷰 더보기</button>}
         {activeTab === '정보' && <dl className="detail-info">
           <div><dt>분류</dt><dd>{details.category ?? '확인 중'}</dd></div>
           <div><dt>가격대</dt><dd>{formatPrice(details)}</dd></div>

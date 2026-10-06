@@ -55,7 +55,7 @@ CSV의 `id`를 기준으로 아래 가상 데이터를 연결합니다.
 
 - `src/data/restaurantDetails.js`: 카테고리, 주소, 영업시간, 상황 태그(지도 탭 목록의 태그 필터와 리뷰 쓰기 태그에 사용)
 - `src/data/restaurantMenus.js`: 식당별 메뉴 4개와 가격, 대표 메뉴. 목록·정보 탭의 가격대는 이 메뉴 가격의 최저~최고입니다.
-- `src/data/restaurantReviews.js`: 식당별 예시 리뷰 4개(0.5점 단위). 상세 페이지는 내 리뷰를 맨 위에 두고 최대 4개만 보여주며, 리뷰 수는 `reviewCount` + 내 리뷰 수입니다. ‘리뷰 더보기’ 버튼은 자리만 있고 동작하지 않습니다.
+- `src/data/restaurantReviews.js`: 식당별 예시 리뷰 4개(0.5점 단위). 상세 페이지는 내 리뷰를 맨 위에 두고 최대 4개만 보여주며, 리뷰 수는 `reviewCount` + 내 리뷰 수입니다.
 
 거리는 `distanceOrigin`의 회사 좌표(37.52894, 126.96862)에서 직선거리로 계산하고 가까운 순으로 정렬합니다. 이 좌표는 콘텐츠팀 데이터의 식당별 회사 기준 거리 22건에 맞춘 값입니다(오차 2m 이내). 지도 중심과 복귀 버튼은 신용산역 기준 그대로입니다. 사진은 `public/restaurants/{id}_01~03.jpg`(480px JPG)이며 `src/data/restaurantPhotos.js`에서 연결합니다.
 

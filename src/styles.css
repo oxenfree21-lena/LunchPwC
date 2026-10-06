@@ -343,7 +343,6 @@ button { font: inherit; -webkit-tap-highlight-color: transparent; }
 .detail-menu li:last-child { border-bottom: 0; }
 .detail-menu small { margin-left: 6px; padding: 2px 6px; border-radius: 5px; background: #fff3ec; color: var(--color-primary); font-size: 11px; font-weight: 600; }
 .detail-menu-price { flex-shrink: 0; color: #333d4b; font-weight: 600; }
-.detail-more-reviews { display: block; width: 100%; min-height: 46px; margin-top: 24px; border: 1px solid #e5e8eb; border-radius: 12px; background: #fff; color: #4e5968; font-size: 14px; font-weight: 600; cursor: pointer; }
 .detail-review p { margin: 10px 0 0; font-size: 14px; line-height: 1.8; word-break: keep-all; overflow-wrap: anywhere; }
 .detail-info { margin: 0; font-size: 14px; }
 .detail-info > div { display: grid; grid-template-columns: 76px 1fr; gap: 12px; padding: 14px 0; border-bottom: 1px solid #f2f4f6; line-height: 22px; }
