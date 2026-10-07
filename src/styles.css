@@ -678,7 +678,7 @@ button { font: inherit; -webkit-tap-highlight-color: transparent; }
 .pod-found dd { margin: 0; color: #333d4b; font-weight: 500; overflow-wrap: anywhere; }
 .pod-message-dialog .pod-found-question { margin-bottom: 18px; color: #333d4b; font-weight: 600; }
 .pod-confirm-notice { margin: -2px 0 6px; color: var(--color-primary); font-size: 14px; font-weight: 600; word-break: keep-all; }
-.pod-rule { margin: -8px 0 20px; color: var(--color-primary); font-size: 14px; font-weight: 600; word-break: keep-all; }
+.pod-rule { margin: -2px 0 20px; color: var(--color-primary); font-size: 14px; font-weight: 600; word-break: keep-all; }
 .restaurant-list-disclaimer { margin: 8px 20px 20px; }
 .pod-date-choices { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .pod-date-choices span { min-height: 56px; gap: 2px; align-content: center; }
